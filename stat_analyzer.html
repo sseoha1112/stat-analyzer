@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StatAnalyzer — 통계 분석기</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0f14;
+    --bg2: #13161d;
+    --bg3: #1a1e27;
+    --bg4: #222739;
+    --border: rgba(100,120,200,0.15);
+    --border2: rgba(100,120,200,0.25);
+    --text: #e8ecf4;
+    --text2: #8b93a8;
+    --text3: #555e75;
+    --accent: #5b8fff;
+    --accent2: #3d6fe8;
+    --green: #3ecf8e;
+    --amber: #f5a623;
+    --red: #f06060;
+    --purple: #a78bfa;
+    --font: 'IBM Plex Sans KR', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  .app-header {
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg2);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: -0.3px;
+  }
+
+  .logo-mark {
+    width: 28px;
+    height: 28px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    font-family: var(--mono);
+  }
+
+  .api-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text2);
+  }
+
+  .api-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text3);
+    transition: background 0.3s;
+  }
+  .api-dot.connected { background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+  .main-layout {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    min-height: calc(100vh - 56px);
+  }
+
+  .sidebar {
+    border-right: 1px solid var(--border);
+    background: var(--bg2);
+    overflow-y: auto;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .content-area {
+    background: var(--bg);
+    overflow-y: auto;
+    padding: 1.5rem 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 0.6rem;
+  }
+
+  .card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+  }
+
+  .card-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-title span.badge {
+    font-size: 10px;
+    background: var(--accent2);
+    color: white;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+  }
+
+  input[type="text"], input[type="number"], input[type="password"], textarea, select {
+    width: 100%;
+    background: var(--bg4);
+    border: 1px solid var(--border2);
+    border-radius: 7px;
+    padding: 8px 11px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--accent);
+  }
+  textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+  select option { background: var(--bg3); }
+
+  .input-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+  .input-group label {
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 9px 16px;
+    border-radius: 8px;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+    width: 100%;
+  }
+  .btn-primary:hover { background: #4a7bf0; }
+  .btn-primary:disabled { background: var(--bg4); color: var(--text3); cursor: not-allowed; transform: none; }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--text2);
+    border: 1px solid var(--border2);
+  }
+  .btn-ghost:hover { color: var(--text); border-color: var(--accent); }
+
+  .btn-sm {
+    padding: 5px 10px;
+    font-size: 12px;
+    border-radius: 6px;
+  }
+
+  .btn-add {
+    background: transparent;
+    border: 1px dashed var(--border2);
+    color: var(--text3);
+    width: 100%;
+    border-radius: 7px;
+    padding: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: var(--font);
+  }
+  .btn-add:hover { color: var(--accent); border-color: var(--accent); background: rgba(91,143,255,0.06); }
+
+  .condition-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg4);
+    border: 1px solid var(--border2);
+    border-radius: 5px;
+    padding: 3px 8px;
+    font-size: 12px;
+    color: var(--text2);
+    margin: 3px 3px 3px 0;
+  }
+  .condition-tag .del {
+    cursor: pointer;
+    color: var(--text3);
+    font-size: 14px;
+    line-height: 1;
+    transition: color 0.15s;
+  }
+  .condition-tag .del:hover { color: var(--red); }
+
+  .iv-block {
+    background: var(--bg4);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+  .iv-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .iv-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent);
+  }
+
+  .dv-block {
+    background: var(--bg4);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+
+  .step-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 1.5rem;
+  }
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text3);
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 6px;
+    transition: all 0.15s;
+  }
+  .step.active { color: var(--accent); background: rgba(91,143,255,0.1); }
+  .step.done { color: var(--green); }
+  .step-num {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--bg4);
+    border: 1px solid var(--border2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .step.active .step-num { background: var(--accent); border-color: var(--accent); color: white; }
+  .step.done .step-num { background: var(--green); border-color: var(--green); color: white; }
+  .step-div { width: 20px; height: 1px; background: var(--border2); }
+
+  .r-output-box {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .r-output-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg3);
+  }
+  .r-output-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text2);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .r-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+  .r-code-block {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: #abb2bf;
+    padding: 14px;
+    line-height: 1.7;
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  .r-result-block {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--green);
+    padding: 14px;
+    line-height: 1.7;
+    overflow-x: auto;
+    white-space: pre;
+    border-top: 1px solid var(--border);
+  }
+
+  .interpretation-box {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 10px;
+    padding: 1.2rem 1.4rem;
+  }
+  .interpretation-box h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .interpretation-box p {
+    font-size: 13.5px;
+    color: var(--text);
+    line-height: 1.8;
+    margin-bottom: 0.75rem;
+  }
+  .interpretation-box p:last-child { margin-bottom: 0; }
+
+  .typing-cursor::after {
+    content: '▋';
+    animation: blink 0.8s infinite;
+  }
+  @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0; } }
+
+  .stat-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 10px;
+    margin-bottom: 1rem;
+  }
+  .stat-tile {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    text-align: center;
+  }
+  .stat-tile .val { font-size: 20px; font-weight: 600; color: var(--accent); font-family: var(--mono); }
+  .stat-tile .lbl { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 4rem 2rem;
+    color: var(--text3);
+    text-align: center;
+  }
+  .empty-state svg { opacity: 0.3; }
+  .empty-state p { font-size: 14px; line-height: 1.7; max-width: 340px; }
+
+  .loader {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .webr-status {
+    font-size: 12px;
+    color: var(--text3);
+    padding: 8px 12px;
+    background: var(--bg4);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .tag-pill {
+    display: inline-block;
+    background: rgba(91,143,255,0.12);
+    color: var(--accent);
+    border: 1px solid rgba(91,143,255,0.25);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 0.25rem 0; }
+
+  .data-table-wrap { overflow-x: auto; }
+  table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    font-family: var(--mono);
+  }
+  table.data-table th {
+    background: var(--bg4);
+    color: var(--text2);
+    padding: 6px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border2);
+    font-weight: 500;
+  }
+  table.data-table td {
+    padding: 5px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  table.data-table tr:hover td { background: var(--bg3); }
+
+  .test-type-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px;
+  }
+  .test-type-btn {
+    background: var(--bg4);
+    border: 1px solid var(--border2);
+    border-radius: 7px;
+    padding: 8px 10px;
+    font-size: 12px;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: var(--font);
+    text-align: left;
+  }
+  .test-type-btn:hover { color: var(--text); border-color: var(--accent); }
+  .test-type-btn.selected { background: rgba(91,143,255,0.12); border-color: var(--accent); color: var(--accent); }
+  .test-type-btn .test-name { font-weight: 500; display: block; margin-bottom: 2px; }
+  .test-type-btn .test-desc { font-size: 10px; color: inherit; opacity: 0.7; }
+
+  .chart-container {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    min-height: 200px;
+  }
+
+  #plot-canvas-container img, #plot-canvas-container canvas {
+    max-width: 100%;
+    border-radius: 6px;
+  }
+
+  .tab-row {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1rem;
+  }
+  .tab-btn {
+    padding: 8px 16px;
+    font-size: 13px;
+    color: var(--text3);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    font-family: var(--font);
+    transition: all 0.15s;
+    margin-bottom: -1px;
+  }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-btn:hover { color: var(--text); }
+
+  .alert {
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .alert-info { background: rgba(91,143,255,0.1); border: 1px solid rgba(91,143,255,0.25); color: var(--accent); }
+  .alert-warn { background: rgba(245,166,35,0.1); border: 1px solid rgba(245,166,35,0.25); color: var(--amber); }
+  .alert-success { background: rgba(62,207,142,0.1); border: 1px solid rgba(62,207,142,0.25); color: var(--green); }
+  .alert-error { background: rgba(240,96,96,0.1); border: 1px solid rgba(240,96,96,0.25); color: var(--red); }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border2); }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="logo">
+    <div class="logo-mark">Σ</div>
+    StatAnalyzer
+  </div>
+  <div style="display:flex;align-items:center;gap:1rem;">
+    <div class="api-badge">
+      <div class="api-dot" id="groq-dot"></div>
+      <span id="groq-status">GROQ 미연결</span>
+    </div>
+    <div class="api-badge">
+      <div class="api-dot" id="webr-dot"></div>
+      <span id="webr-status">WebR 로딩중</span>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="openSettings()">⚙ 설정</button>
+  </div>
+</header>
+
+<!-- Settings Modal -->
+<div id="settings-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;display:none;align-items:center;justify-content:center;">
+  <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:14px;padding:1.5rem;width:420px;max-width:90vw;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+      <h3 style="font-size:15px;font-weight:600;">API 설정</h3>
+      <button onclick="closeSettings()" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer;">×</button>
+    </div>
+    <div class="input-group">
+      <label>GROQ API Key</label>
+      <input type="password" id="groq-api-key" placeholder="gsk_..." />
+      <span style="font-size:11px;color:var(--text3);margin-top:4px;"><a href="https://console.groq.com/keys" style="color:var(--accent);" target="_blank">console.groq.com</a>에서 발급</span>
+    </div>
+    <div class="input-group" style="margin-top:0.75rem;">
+      <label>GROQ 모델</label>
+      <select id="groq-model">
+        <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile (추천)</option>
+        <option value="llama-3.1-8b-instant">llama-3.1-8b-instant (빠름)</option>
+        <option value="mixtral-8x7b-32768">mixtral-8x7b-32768</option>
+        <option value="gemma2-9b-it">gemma2-9b-it</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" style="margin-top:1rem;" onclick="saveSettings()">저장</button>
+  </div>
+</div>
+
+<div class="main-layout">
+  <!-- SIDEBAR: Experiment Design -->
+  <aside class="sidebar">
+    <div>
+      <div class="section-label">실험 설계</div>
+      <div class="step-indicator">
+        <div class="step active" id="step1-ind" onclick="goStep(1)">
+          <div class="step-num">1</div><span>변수</span>
+        </div>
+        <div class="step-div"></div>
+        <div class="step" id="step2-ind" onclick="goStep(2)">
+          <div class="step-num">2</div><span>데이터</span>
+        </div>
+        <div class="step-div"></div>
+        <div class="step" id="step3-ind" onclick="goStep(3)">
+          <div class="step-num">3</div><span>검정</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 1: Variables -->
+    <div id="step1">
+      <!-- DV -->
+      <div class="card-title" style="margin-bottom:0.5rem;font-size:12px;">
+        <span style="color:var(--purple);">●</span> 종속 변수 (DV)
+      </div>
+      <div id="dv-list"></div>
+      <button class="btn-add" onclick="addDV()">+ 종속 변수 추가</button>
+
+      <div style="height:1rem;"></div>
+
+      <!-- IV -->
+      <div class="card-title" style="margin-bottom:0.5rem;font-size:12px;">
+        <span style="color:var(--green);">●</span> 독립 변수 (IV)
+      </div>
+      <div id="iv-list"></div>
+      <button class="btn-add" onclick="addIV()">+ 독립 변수 추가</button>
+
+      <div style="height:1rem;"></div>
+
+      <!-- Research question -->
+      <div class="card-title" style="margin-bottom:0.5rem;font-size:12px;">
+        <span style="color:var(--amber);">●</span> 연구 목적 / 가설
+      </div>
+      <textarea id="research-question" placeholder="예: 교수법(강의식 vs 토론식)에 따라 시험 점수에 유의미한 차이가 있는가?"></textarea>
+
+      <div style="height:0.75rem;"></div>
+      <button class="btn btn-primary" onclick="goStep(2)">다음 → 데이터 입력</button>
+    </div>
+
+    <!-- STEP 2: Data -->
+    <div id="step2" style="display:none;">
+      <div class="card-title" style="margin-bottom:0.5rem;font-size:12px;">데이터 입력 방식</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:0.75rem;">
+        <button class="test-type-btn selected" id="mode-manual" onclick="setDataMode('manual')">
+          <span class="test-name">직접 입력</span>
+          <span class="test-desc">숫자를 직접 입력</span>
+        </button>
+        <button class="test-type-btn" id="mode-gen" onclick="setDataMode('generate')">
+          <span class="test-name">예시 생성</span>
+          <span class="test-desc">샘플 데이터 자동 생성</span>
+        </button>
+      </div>
+
+      <div id="data-manual-input">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">각 조건별 값을 쉼표로 구분하여 입력하세요</div>
+        <div id="data-inputs-container"></div>
+      </div>
+
+      <div id="data-gen-input" style="display:none;">
+        <div class="input-row">
+          <div class="input-group">
+            <label>조건당 N</label>
+            <input type="number" id="gen-n" value="20" min="5" max="200" />
+          </div>
+          <div class="input-group">
+            <label>효과 크기</label>
+            <select id="gen-effect">
+              <option value="small">소 (d=0.2)</option>
+              <option value="medium" selected>중 (d=0.5)</option>
+              <option value="large">대 (d=0.8)</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-ghost" style="width:100%;margin-bottom:0.5rem;" onclick="generateSampleData()">샘플 데이터 생성</button>
+      </div>
+
+      <div style="height:0.75rem;"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
+        <button class="btn btn-ghost" onclick="goStep(1)">← 이전</button>
+        <button class="btn btn-primary" onclick="goStep(3)">다음 → 검정 선택</button>
+      </div>
+    </div>
+
+    <!-- STEP 3: Test -->
+    <div id="step3" style="display:none;">
+      <div class="card-title" style="margin-bottom:0.5rem;font-size:12px;">추천 검정</div>
+      <div id="recommended-test" class="alert alert-info" style="margin-bottom:0.75rem;font-size:12px;"></div>
+
+      <div class="card-title" style="margin-bottom:0.5rem;font-size:12px;">검정 선택</div>
+      <div class="test-type-grid" id="test-type-grid"></div>
+
+      <div style="height:0.75rem;"></div>
+      <div class="input-group">
+        <label>유의수준 α</label>
+        <select id="alpha-level">
+          <option value="0.05" selected>0.05</option>
+          <option value="0.01">0.01</option>
+          <option value="0.001">0.001</option>
+        </select>
+      </div>
+
+      <div class="input-group">
+        <label>추가 옵션</label>
+        <div style="display:flex;flex-direction:column;gap:5px;margin-top:2px;">
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);cursor:pointer;">
+            <input type="checkbox" id="opt-posthoc" style="width:auto;" /> 사후검정 (Tukey HSD)
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);cursor:pointer;">
+            <input type="checkbox" id="opt-effect" checked style="width:auto;" /> 효과 크기 (Cohen's d/η²)
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);cursor:pointer;">
+            <input type="checkbox" id="opt-normality" style="width:auto;" /> 정규성 검정 (Shapiro-Wilk)
+          </label>
+        </div>
+      </div>
+
+      <div style="height:0.75rem;"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
+        <button class="btn btn-ghost" onclick="goStep(2)">← 이전</button>
+        <button class="btn btn-primary" id="run-btn" onclick="runAnalysis()">
+          <span id="run-btn-text">▶ 분석 실행</span>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="content-area">
+    <div id="empty-state" class="empty-state">
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+        <rect x="8" y="36" width="8" height="20" rx="2" fill="currentColor"/>
+        <rect x="22" y="24" width="8" height="32" rx="2" fill="currentColor"/>
+        <rect x="36" y="14" width="8" height="42" rx="2" fill="currentColor"/>
+        <rect x="50" y="28" width="8" height="28" rx="2" fill="currentColor"/>
+        <line x1="4" y1="58" x2="60" y2="58" stroke="currentColor" stroke-width="2"/>
+      </svg>
+      <p>왼쪽에서 실험 설계를 완성하고<br>분석을 실행하면 결과가 여기에 표시됩니다</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+        <span class="tag-pill">t-검정</span>
+        <span class="tag-pill">ANOVA</span>
+        <span class="tag-pill">회귀분석</span>
+        <span class="tag-pill">카이제곱</span>
+        <span class="tag-pill">비모수 검정</span>
+        <span class="tag-pill">AI 해석</span>
+      </div>
+    </div>
+
+    <div id="results-area" style="display:none;"></div>
+  </main>
+</div>
+
+<!-- WebR -->
+<script src="https://cdn.jsdelivr.net/npm/webr@0.4.1/dist/webr.umd.js"></script>
+
+<script>
+let webR = null;
+let webrReady = false;
+let groqKey = localStorage.getItem('groq_key') || '';
+let groqModel = localStorage.getItem('groq_model') || 'llama-3.3-70b-versatile';
+let ivList = [];
+let dvList = [];
+let dataMode = 'manual';
+let currentStep = 1;
+let selectedTest = '';
+
+// --- WebR Init ---
+async function initWebR() {
+  try {
+    webR = new WebR();
+    await webR.init();
+    webrReady = true;
+    document.getElementById('webr-dot').classList.add('connected');
+    document.getElementById('webr-status').textContent = 'WebR 준비됨';
+  } catch(e) {
+    document.getElementById('webr-status').textContent = 'WebR 오류';
+    console.error('WebR init error:', e);
+  }
+}
+initWebR();
+
+// Check groq key
+if (groqKey) {
+  document.getElementById('groq-dot').classList.add('connected');
+  document.getElementById('groq-status').textContent = 'GROQ 연결됨';
+}
+
+// --- Settings ---
+function openSettings() {
+  const m = document.getElementById('settings-modal');
+  document.getElementById('groq-api-key').value = groqKey;
+  document.getElementById('groq-model').value = groqModel;
+  m.style.display = 'flex';
+}
+function closeSettings() {
+  document.getElementById('settings-modal').style.display = 'none';
+}
+function saveSettings() {
+  groqKey = document.getElementById('groq-api-key').value.trim();
+  groqModel = document.getElementById('groq-model').value;
+  localStorage.setItem('groq_key', groqKey);
+  localStorage.setItem('groq_model', groqModel);
+  if (groqKey) {
+    document.getElementById('groq-dot').classList.add('connected');
+    document.getElementById('groq-status').textContent = 'GROQ 연결됨';
+  } else {
+    document.getElementById('groq-dot').classList.remove('connected');
+    document.getElementById('groq-status').textContent = 'GROQ 미연결';
+  }
+  closeSettings();
+}
+
+// --- Step Navigation ---
+function goStep(n) {
+  if (n === 2) {
+    if (ivList.length === 0 || dvList.length === 0) {
+      alert('독립 변수와 종속 변수를 최소 1개씩 추가해주세요.');
+      return;
+    }
+    buildDataInputs();
+    updateRecommendedTest();
+  }
+  if (n === 3) {
+    updateRecommendedTest();
+    buildTestTypeGrid();
+  }
+  currentStep = n;
+  document.getElementById('step1').style.display = n === 1 ? 'block' : 'none';
+  document.getElementById('step2').style.display = n === 2 ? 'block' : 'none';
+  document.getElementById('step3').style.display = n === 3 ? 'block' : 'none';
+
+  ['step1-ind','step2-ind','step3-ind'].forEach((id, i) => {
+    const el = document.getElementById(id);
+    el.className = 'step' + (i + 1 === n ? ' active' : (i + 1 < n ? ' done' : ''));
+  });
+}
+
+// --- IV Management ---
+function addIV() {
+  const id = 'iv_' + Date.now();
+  ivList.push({ id, name: '', conditions: [], type: 'between' });
+  renderIVList();
+}
+function removeIV(id) {
+  ivList = ivList.filter(iv => iv.id !== id);
+  renderIVList();
+}
+function updateIVName(id, val) {
+  const iv = ivList.find(i => i.id === id);
+  if (iv) iv.name = val;
+}
+function updateIVType(id, val) {
+  const iv = ivList.find(i => i.id === id);
+  if (iv) iv.type = val;
+}
+function addCondition(id) {
+  const iv = ivList.find(i => i.id === id);
+  const input = document.getElementById('cond-input-' + id);
+  const val = input.value.trim();
+  if (!val) return;
+  iv.conditions.push(val);
+  input.value = '';
+  renderIVList();
+}
+function removeCondition(ivId, condIdx) {
+  const iv = ivList.find(i => i.id === ivId);
+  iv.conditions.splice(condIdx, 1);
+  renderIVList();
+}
+
+function renderIVList() {
+  const container = document.getElementById('iv-list');
+  if (ivList.length === 0) {
+    container.innerHTML = '<div style="font-size:12px;color:var(--text3);margin-bottom:8px;padding:8px 10px;background:var(--bg4);border-radius:6px;">독립 변수가 없습니다</div>';
+    return;
+  }
+  container.innerHTML = ivList.map(iv => `
+    <div class="iv-block">
+      <div class="iv-header">
+        <input type="text" value="${escHtml(iv.name)}" placeholder="변수명 (예: 교수법)"
+          style="background:transparent;border:none;border-bottom:1px solid var(--border2);border-radius:0;color:var(--accent);font-weight:500;font-size:13px;padding:2px 0;width:calc(100% - 60px);"
+          oninput="updateIVName('${iv.id}', this.value)" />
+        <div style="display:flex;gap:4px;">
+          <select style="width:auto;padding:3px 6px;font-size:11px;" onchange="updateIVType('${iv.id}', this.value)">
+            <option value="between" ${iv.type==='between'?'selected':''}>피험자간</option>
+            <option value="within" ${iv.type==='within'?'selected':''}>피험자내</option>
+          </select>
+          <button onclick="removeIV('${iv.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:0 4px;" title="삭제">×</button>
+        </div>
+      </div>
+      <div style="margin-bottom:6px;">
+        ${iv.conditions.map((c, i) => `
+          <span class="condition-tag">${escHtml(c)}<span class="del" onclick="removeCondition('${iv.id}',${i})">×</span></span>
+        `).join('')}
+      </div>
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="cond-input-${iv.id}" placeholder="조건명 추가 (Enter)"
+          style="flex:1;" onkeydown="if(event.key==='Enter')addCondition('${iv.id}')" />
+        <button class="btn btn-ghost btn-sm" onclick="addCondition('${iv.id}')">+</button>
+      </div>
+      <div style="margin-top:6px;font-size:11px;color:var(--text3);">
+        ${iv.conditions.length > 0 ? iv.conditions.length + '개 조건' : '조건을 추가하세요'}
+      </div>
+    </div>
+  `).join('');
+}
+
+// --- DV Management ---
+function addDV() {
+  const id = 'dv_' + Date.now();
+  dvList.push({ id, name: '', scale: 'continuous' });
+  renderDVList();
+}
+function removeDV(id) {
+  dvList = dvList.filter(d => d.id !== id);
+  renderDVList();
+}
+function updateDVName(id, val) {
+  const dv = dvList.find(d => d.id === id);
+  if (dv) dv.name = val;
+}
+function updateDVScale(id, val) {
+  const dv = dvList.find(d => d.id === id);
+  if (dv) dv.scale = val;
+}
+function renderDVList() {
+  const container = document.getElementById('dv-list');
+  if (dvList.length === 0) {
+    container.innerHTML = '<div style="font-size:12px;color:var(--text3);margin-bottom:8px;padding:8px 10px;background:var(--bg4);border-radius:6px;">종속 변수가 없습니다</div>';
+    return;
+  }
+  container.innerHTML = dvList.map(dv => `
+    <div class="dv-block">
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+        <input type="text" value="${escHtml(dv.name)}" placeholder="변수명 (예: 시험점수)"
+          style="flex:1;background:transparent;border:none;border-bottom:1px solid var(--border2);border-radius:0;color:var(--purple);font-weight:500;font-size:13px;padding:2px 0;"
+          oninput="updateDVName('${dv.id}', this.value)" />
+        <select style="width:auto;padding:3px 6px;font-size:11px;" onchange="updateDVScale('${dv.id}', this.value)">
+          <option value="continuous" ${dv.scale==='continuous'?'selected':''}>연속형</option>
+          <option value="ordinal" ${dv.scale==='ordinal'?'selected':''}>순위형</option>
+          <option value="categorical" ${dv.scale==='categorical'?'selected':''}>범주형</option>
+        </select>
+        <button onclick="removeDV('${dv.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;" title="삭제">×</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// --- Recommend Test ---
+function updateRecommendedTest() {
+  const iv = ivList[0];
+  const dv = dvList[0];
+  if (!iv || !dv) return;
+
+  const nCond = iv.conditions.length;
+  const scale = dv.scale;
+  let rec = '';
+
+  if (scale === 'categorical') {
+    rec = '카이제곱 검정 (χ²)';
+    selectedTest = 'chi2';
+  } else if (scale === 'continuous' || scale === 'ordinal') {
+    if (nCond === 2) {
+      rec = scale === 'ordinal' ? 'Mann-Whitney U 검정 (비모수)' : '독립표본 t-검정';
+      selectedTest = scale === 'ordinal' ? 'mannwhitney' : 'ttest';
+    } else if (nCond > 2) {
+      rec = scale === 'ordinal' ? 'Kruskal-Wallis 검정 (비모수)' : '일원분산분석 (One-way ANOVA)';
+      selectedTest = scale === 'ordinal' ? 'kruskalwallis' : 'anova';
+    } else {
+      rec = '조건을 2개 이상 추가해주세요';
+      selectedTest = '';
+    }
+  }
+  if (ivList.length > 1 && (scale === 'continuous')) {
+    rec = '이원분산분석 (Two-way ANOVA) 권장';
+    selectedTest = 'anova2';
+  }
+  document.getElementById('recommended-test').textContent = '추천: ' + rec;
+}
+
+// --- Test Type Grid ---
+const TEST_TYPES = [
+  { id: 'ttest', name: 't-검정', desc: '두 집단 평균 비교' },
+  { id: 'anova', name: '일원 ANOVA', desc: '3개 이상 집단 비교' },
+  { id: 'anova2', name: '이원 ANOVA', desc: '두 IV 상호작용' },
+  { id: 'regression', name: '회귀분석', desc: '예측 및 관계 추정' },
+  { id: 'chi2', name: '카이제곱', desc: '범주형 변수 독립성' },
+  { id: 'mannwhitney', name: 'Mann-Whitney', desc: '비모수 두 집단' },
+  { id: 'kruskalwallis', name: 'Kruskal-Wallis', desc: '비모수 다집단' },
+  { id: 'pearson', name: '상관분석', desc: 'Pearson/Spearman' },
+];
+
+function buildTestTypeGrid() {
+  const container = document.getElementById('test-type-grid');
+  container.innerHTML = TEST_TYPES.map(t => `
+    <button class="test-type-btn ${selectedTest === t.id ? 'selected' : ''}" onclick="selectTest('${t.id}')">
+      <span class="test-name">${t.name}</span>
+      <span class="test-desc">${t.desc}</span>
+    </button>
+  `).join('');
+}
+function selectTest(id) {
+  selectedTest = id;
+  buildTestTypeGrid();
+}
+
+// --- Data Input Build ---
+function buildDataInputs() {
+  const container = document.getElementById('data-inputs-container');
+  const iv = ivList[0];
+  const dv = dvList[0];
+  if (!iv || !dv || iv.conditions.length === 0) {
+    container.innerHTML = '<div class="alert alert-warn">독립 변수의 조건을 먼저 추가해주세요.</div>';
+    return;
+  }
+  container.innerHTML = iv.conditions.map((cond, i) => `
+    <div class="input-group">
+      <label>${escHtml(cond)} 조건의 ${escHtml(dv.name || 'DV')} 값</label>
+      <textarea id="data-cond-${i}" placeholder="예: 85, 90, 78, 92, 88, 75, 95, 83"
+        style="min-height:60px;"></textarea>
+    </div>
+  `).join('');
+}
+
+function setDataMode(mode) {
+  dataMode = mode;
+  document.getElementById('mode-manual').classList.toggle('selected', mode === 'manual');
+  document.getElementById('mode-gen').classList.toggle('selected', mode === 'generate');
+  document.getElementById('data-manual-input').style.display = mode === 'manual' ? 'block' : 'none';
+  document.getElementById('data-gen-input').style.display = mode === 'generate' ? 'block' : 'none';
+}
+
+function generateSampleData() {
+  const iv = ivList[0];
+  if (!iv || iv.conditions.length === 0) return;
+  const n = parseInt(document.getElementById('gen-n').value) || 20;
+  const effect = document.getElementById('gen-effect').value;
+  const dMap = { small: 0.2, medium: 0.5, large: 0.8 };
+  const d = dMap[effect];
+  const means = iv.conditions.map((_, i) => 70 + i * d * 15);
+  const sd = 15;
+
+  buildDataInputs();
+  iv.conditions.forEach((cond, i) => {
+    const vals = Array.from({length: n}, () => {
+      const u1 = Math.random(), u2 = Math.random();
+      const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+      return Math.round((means[i] + z * sd) * 10) / 10;
+    });
+    const el = document.getElementById('data-cond-' + i);
+    if (el) el.value = vals.join(', ');
+  });
+}
+
+// --- Get Data ---
+function getDataVectors() {
+  const iv = ivList[0];
+  if (!iv) return [];
+  return iv.conditions.map((cond, i) => {
+    const el = document.getElementById('data-cond-' + i);
+    if (!el) return [];
+    return el.value.split(',').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+  });
+}
+
+// --- Build R Code ---
+function buildRCode() {
+  const iv = ivList[0];
+  const dv = dvList[0];
+  const alpha = parseFloat(document.getElementById('alpha-level').value);
+  const doPosthoc = document.getElementById('opt-posthoc').checked;
+  const doEffect = document.getElementById('opt-effect').checked;
+  const doNormality = document.getElementById('opt-normality').checked;
+  const data = getDataVectors();
+
+  let code = '';
+  const condNames = iv.conditions;
+
+  // Define data
+  condNames.forEach((cond, i) => {
+    code += `${sanitizeRName(cond)} <- c(${data[i].join(', ')})\n`;
+  });
+  code += '\n';
+
+  const dvName = sanitizeRName(dv.name || 'y');
+  const ivName = sanitizeRName(iv.name || 'group');
+
+  // Build long format
+  code += `# Long-format 데이터 생성\n`;
+  code += `${dvName} <- c(${condNames.map(c => sanitizeRName(c)).join(', ')})\n`;
+  code += `${ivName} <- factor(c(${condNames.map((c, i) => `rep("${c}", ${data[i].length})`).join(', ')}))\n`;
+  code += `df <- data.frame(${dvName}, ${ivName})\n\n`;
+
+  // Descriptive stats
+  code += `# 기술 통계\ncat("=== 기술통계 ===\\n")\n`;
+  code += `desc <- tapply(${dvName}, ${ivName}, function(x) c(N=length(x), M=round(mean(x),3), SD=round(sd(x),3), Min=min(x), Max=max(x)))\n`;
+  code += `print(desc)\ncat("\\n")\n\n`;
+
+  if (doNormality) {
+    code += `# 정규성 검정 (Shapiro-Wilk)\ncat("=== 정규성 검정 ===\\n")\n`;
+    condNames.forEach(c => {
+      code += `cat("${c}: "); sw <- shapiro.test(${sanitizeRName(c)}); cat("W=", round(sw$statistic,4), "p=", round(sw$p.value,4), "\\n")\n`;
+    });
+    code += `cat("\\n")\n\n`;
+  }
+
+  // Main test
+  code += `# 주요 통계 검정\ncat("=== 검정 결과 ===\\n")\n`;
+
+  if (selectedTest === 'ttest') {
+    code += `result <- t.test(${sanitizeRName(condNames[0])}, ${sanitizeRName(condNames[1]||condNames[0])})\n`;
+    code += `print(result)\n\n`;
+    if (doEffect) {
+      code += `# 효과 크기 (Cohen's d)\ncat("\\n=== 효과 크기 ===\\n")\n`;
+      code += `m1 <- mean(${sanitizeRName(condNames[0])}); m2 <- mean(${sanitizeRName(condNames[1]||condNames[0])})\n`;
+      code += `sp <- sqrt(((length(${sanitizeRName(condNames[0])})-1)*var(${sanitizeRName(condNames[0])}) + (length(${sanitizeRName(condNames[1]||condNames[0])})-1)*var(${sanitizeRName(condNames[1]||condNames[0])})) / (length(${sanitizeRName(condNames[0])})+length(${sanitizeRName(condNames[1]||condNames[0])})-2))\n`;
+      code += `cohens_d <- (m1 - m2) / sp\ncat("Cohen's d =", round(cohens_d, 4), "\\n")\n`;
+      code += `cat("해석:", ifelse(abs(cohens_d)<0.2, "매우 작음", ifelse(abs(cohens_d)<0.5, "소", ifelse(abs(cohens_d)<0.8, "중", "대"))), "\\n")\n\n`;
+    }
+  } else if (selectedTest === 'anova') {
+    code += `result <- aov(${dvName} ~ ${ivName}, data=df)\n`;
+    code += `print(summary(result))\n\n`;
+    if (doPosthoc) {
+      code += `# 사후검정 (Tukey HSD)\ncat("\\n=== 사후검정 (Tukey HSD) ===\\n")\nprint(TukeyHSD(result))\n\n`;
+    }
+    if (doEffect) {
+      code += `# 효과 크기 (Eta-squared)\ncat("\\n=== 효과 크기 ===\\n")\nss <- summary(result)[[1]]\neta2 <- ss["Sum Sq"][1,1] / sum(ss["Sum Sq"])\ncat("Eta-squared (η²) =", round(eta2, 4), "\\n")\n`;
+      code += `cat("해석:", ifelse(eta2<0.01, "소", ifelse(eta2<0.06, "중", "대")), "\\n")\n\n`;
+    }
+  } else if (selectedTest === 'anova2') {
+    const iv2 = ivList[1];
+    if (iv2) {
+      const ivName2 = sanitizeRName(iv2.name || 'group2');
+      code += `result <- aov(${dvName} ~ ${ivName} * ${ivName2}, data=df)\n`;
+      code += `print(summary(result))\n\n`;
+    }
+  } else if (selectedTest === 'regression') {
+    const ivVars = ivList.map(iv => sanitizeRName(iv.name || 'x')).join(' + ');
+    code += `result <- lm(${dvName} ~ ${ivName}, data=df)\n`;
+    code += `print(summary(result))\n\n`;
+  } else if (selectedTest === 'chi2') {
+    code += `tbl <- table(${dvName}, ${ivName})\ncat("빈도표:\\n"); print(tbl)\n`;
+    code += `result <- chisq.test(tbl)\nprint(result)\n\n`;
+  } else if (selectedTest === 'mannwhitney') {
+    const c0 = sanitizeRName(condNames[0]);
+    const c1 = sanitizeRName(condNames[1] || condNames[0]);
+    code += `result <- wilcox.test(${c0}, ${c1})\nprint(result)\n\n`;
+  } else if (selectedTest === 'kruskalwallis') {
+    code += `result <- kruskal.test(${dvName} ~ ${ivName}, data=df)\nprint(result)\n\n`;
+  } else if (selectedTest === 'pearson') {
+    code += `result <- cor.test(${sanitizeRName(condNames[0])}, ${sanitizeRName(condNames[1]||condNames[0])})\nprint(result)\n\n`;
+  }
+
+  code += `cat("분석 완료\\n")`;
+  return code;
+}
+
+// --- Run Analysis ---
+async function runAnalysis() {
+  if (!webrReady) {
+    alert('WebR이 아직 로딩 중입니다. 잠시 후 다시 시도하세요.');
+    return;
+  }
+  if (!selectedTest) {
+    alert('검정 방법을 선택해주세요.');
+    return;
+  }
+  const data = getDataVectors();
+  if (data.some(d => d.length === 0)) {
+    alert('모든 조건의 데이터를 입력해주세요.');
+    return;
+  }
+
+  const runBtn = document.getElementById('run-btn');
+  const runBtnText = document.getElementById('run-btn-text');
+  runBtn.disabled = true;
+  runBtnText.innerHTML = '<span class="loader"></span> 분석중...';
+
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('results-area').style.display = 'block';
+
+  const rCode = buildRCode();
+  showResults({ rCode, rOutput: null, status: 'running' });
+
+  try {
+    const shelter = await webR.shelter();
+    let output = '';
+    const captureCode = `
+local({
+  output <- capture.output({
+    ${rCode}
+  })
+  paste(output, collapse="\\n")
+})`;
+    const result = await shelter.evalR(captureCode);
+    output = await result.toJs();
+    if (Array.isArray(output)) output = output.join('\n');
+    showResults({ rCode, rOutput: output, status: 'done' });
+    if (groqKey) {
+      await interpretWithGroq(rCode, output);
+    } else {
+      showNoGroqMessage();
+    }
+  } catch(e) {
+    showResults({ rCode, rOutput: 'R 실행 오류: ' + e.message, status: 'error' });
+  } finally {
+    runBtn.disabled = false;
+    runBtnText.innerHTML = '▶ 분석 실행';
+  }
+}
+
+// --- Show Results ---
+function showResults({ rCode, rOutput, status }) {
+  const iv = ivList[0];
+  const dv = dvList[0];
+  const data = getDataVectors();
+
+  let statsHtml = '';
+  if (data && iv && iv.conditions.length > 0) {
+    statsHtml = `<div class="stat-summary-grid">` +
+      iv.conditions.map((cond, i) => {
+        const vals = data[i];
+        if (!vals || vals.length === 0) return '';
+        const mean = vals.reduce((a,b)=>a+b,0)/vals.length;
+        const sd = Math.sqrt(vals.reduce((a,b)=>a+(b-mean)**2,0)/vals.length);
+        return `<div class="stat-tile">
+          <div class="val">${mean.toFixed(2)}</div>
+          <div class="lbl">${escHtml(cond)} 평균</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px;">SD ${sd.toFixed(2)}, N ${vals.length}</div>
+        </div>`;
+      }).join('') + `</div>`;
+  }
+
+  const testName = TEST_TYPES.find(t => t.id === selectedTest)?.name || selectedTest;
+
+  document.getElementById('results-area').innerHTML = `
+    <div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <div>
+          <div style="font-size:18px;font-weight:600;">분석 결과</div>
+          <div style="font-size:13px;color:var(--text2);margin-top:2px;">
+            ${escHtml(iv?.name||'IV')} → ${escHtml(dv?.name||'DV')} · <span class="tag-pill">${testName}</span>
+          </div>
+        </div>
+      </div>
+      ${statsHtml}
+
+      <div class="r-output-box" style="margin-bottom:1.5rem;">
+        <div class="r-output-header">
+          <div class="r-output-title">
+            ${status === 'running' ? '<div class="r-dot"></div>' : ''}
+            R 코드
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="copyToClipboard('r-code-content')">복사</button>
+        </div>
+        <div class="r-code-block" id="r-code-content">${escHtml(rCode)}</div>
+        ${rOutput ? `
+          <div class="r-output-header" style="border-top:1px solid var(--border);">
+            <div class="r-output-title" style="color:var(--green);">출력 결과</div>
+          </div>
+          <div class="r-result-block" id="r-output-content">${escHtml(rOutput)}</div>
+        ` : status === 'running' ? `
+          <div style="padding:1rem;text-align:center;color:var(--text3);font-size:13px;">
+            <span class="loader"></span> WebR에서 실행 중...
+          </div>
+        ` : `
+          <div class="r-result-block" style="color:var(--red);">${escHtml(rOutput||'')}</div>
+        `}
+      </div>
+
+      <div id="interpretation-section"></div>
+    </div>
+  `;
+}
+
+// --- GROQ Interpretation ---
+async function interpretWithGroq(rCode, rOutput) {
+  const interpSection = document.getElementById('interpretation-section');
+  interpSection.innerHTML = `
+    <div class="interpretation-box">
+      <h3>🤖 AI 결과 해석 <span style="font-size:12px;font-weight:400;color:var(--text3);">GROQ · ${groqModel}</span></h3>
+      <p id="interp-text" class="typing-cursor" style="color:var(--text2);">해석 생성 중...</p>
+    </div>
+  `;
+
+  const rq = document.getElementById('research-question').value.trim();
+  const iv = ivList[0];
+  const dv = dvList[0];
+  const alpha = document.getElementById('alpha-level').value;
+  const testName = TEST_TYPES.find(t => t.id === selectedTest)?.name || selectedTest;
+
+  const prompt = `당신은 통계 전문가입니다. 아래 심리학/사회과학 실험의 통계 분석 결과를 한국어로 명확하게 해석해주세요.
+
+**실험 정보**
+- 독립변수(IV): ${iv?.name || '미지정'} (조건: ${iv?.conditions?.join(', ') || '없음'})
+- 종속변수(DV): ${dv?.name || '미지정'}
+- 연구 목적: ${rq || '명시되지 않음'}
+- 사용 검정: ${testName}
+- 유의수준: α = ${alpha}
+
+**R 분석 결과:**
+\`\`\`
+${rOutput}
+\`\`\`
+
+다음 항목을 포함하여 해석해주세요:
+1. **주요 결과 요약**: 검정 통계량, p-value, 유의성 여부를 명확하게
+2. **실질적 의미**: 연구 맥락에서 결과가 의미하는 바
+3. **효과 크기 해석**: Cohen's d 또는 η² 값이 있다면 실질적 중요도 평가
+4. **한계 및 주의사항**: 데이터나 설계에서 고려해야 할 점
+5. **권고사항**: 결과를 보고서에 기술하는 방법 (APA 형식)
+
+명확하고 학술적이면서도 이해하기 쉽게 작성해주세요.`;
+
+  try {
+    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${groqKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: groqModel,
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 1500,
+        stream: true,
+        temperature: 0.3
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.text();
+      throw new Error(err);
+    }
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '';
+    const interpEl = document.getElementById('interp-text');
+    interpEl.className = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value);
+      const lines = chunk.split('\n');
+      for (const line of lines) {
+        if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+          try {
+            const json = JSON.parse(line.slice(6));
+            const delta = json.choices?.[0]?.delta?.content || '';
+            fullText += delta;
+            interpEl.innerHTML = formatInterpretation(fullText) + '<span class="typing-cursor"></span>';
+          } catch {}
+        }
+      }
+    }
+    interpEl.innerHTML = formatInterpretation(fullText);
+  } catch(e) {
+    document.getElementById('interp-text').className = '';
+    document.getElementById('interp-text').innerHTML = `<span style="color:var(--red);">GROQ 오류: ${escHtml(e.message)}</span><br><span style="font-size:12px;color:var(--text3);">API 키와 인터넷 연결을 확인해주세요.</span>`;
+  }
+}
+
+function formatInterpretation(text) {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n\n/g, '</p><p style="margin-bottom:0.75rem;">')
+    .replace(/\n/g, '<br>')
+    .replace(/^/, '<p style="margin-bottom:0.75rem;">')
+    .replace(/$/, '</p>');
+}
+
+function showNoGroqMessage() {
+  const s = document.getElementById('interpretation-section');
+  if (!s) return;
+  s.innerHTML = `
+    <div class="alert alert-warn" style="margin-bottom:1rem;">
+      <div>
+        <strong>AI 해석을 사용하려면</strong> 오른쪽 상단 <strong>⚙ 설정</strong>에서 GROQ API 키를 입력하세요.
+        <a href="https://console.groq.com/keys" target="_blank" style="color:var(--amber);margin-left:4px;">무료 발급 →</a>
+      </div>
+    </div>
+  `;
+}
+
+// --- Utils ---
+function sanitizeRName(name) {
+  if (!name) return 'var1';
+  return name.replace(/[^a-zA-Z0-9가-힣_]/g, '_').replace(/^[0-9]/, 'v_');
+}
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function copyToClipboard(id) {
+  const el = document.getElementById(id);
+  navigator.clipboard.writeText(el.textContent).then(() => {
+    const btn = el.closest('.r-output-box').querySelector('.btn-ghost');
+    if (btn) { btn.textContent = '✓ 복사됨'; setTimeout(() => btn.textContent = '복사', 1500); }
+  });
+}
+
+// Initialize
+renderIVList();
+renderDVList();
+</script>
+</body>
+</html>
