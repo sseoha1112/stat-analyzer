@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StatAnalyzer — 통계 분석기</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--surface:#0d1220;--card:#111827;--elevated:#161f33;--hover:#1c2540;
+  --border:rgba(99,130,255,.11);--border2:rgba(99,130,255,.2);--border3:rgba(99,130,255,.38);
+  --text:#dce4f5;--text2:#7a87a8;--text3:#3c4a63;
+  --blue:#5b8fff;--indigo:#818cf8;--violet:#a78bfa;--green:#34d399;--amber:#fbbf24;--red:#f87171;
+  --font:'Pretendard',-apple-system,sans-serif;--mono:'JetBrains Mono',monospace;
+  --r:10px;--rsm:7px;--rlg:14px;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;line-height:1.6;overflow-x:hidden}
+/* HEADER */
+.hdr{height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 1.75rem;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:200}
+.logo{display:flex;align-items:center;gap:11px}
+.logo-icon{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--blue),var(--indigo));display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:14px;color:#fff;box-shadow:0 0 18px rgba(91,143,255,.3)}
+.logo-name{font-size:15px;font-weight:700;letter-spacing:-.4px}
+.logo-sub{font-size:11px;color:var(--text3);margin-left:3px}
+.hdr-r{display:flex;align-items:center;gap:9px}
+.spill{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;color:var(--text2)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--text3);flex-shrink:0}
+.dot.on{background:var(--green);box-shadow:0 0 8px var(--green)}
+/* LAYOUT */
+.layout{display:grid;grid-template-columns:380px 1fr;min-height:calc(100vh - 58px)}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;padding:1.4rem 1.2rem;display:flex;flex-direction:column;gap:.85rem}
+.main{background:var(--bg);overflow-y:auto;padding:1.75rem 2rem}
+/* STEPS */
+.steps{display:flex;align-items:center;gap:0;margin-bottom:1.1rem}
+.si{display:flex;align-items:center;gap:7px;padding:5px 9px;border-radius:8px;cursor:pointer;font-size:12px;color:var(--text3);transition:all .15s}
+.si.active{background:rgba(91,143,255,.1);color:var(--blue)}
+.si.done{color:var(--green)}
+.snum{width:20px;height:20px;border-radius:50%;font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;background:var(--elevated);border:1px solid var(--border2);flex-shrink:0}
+.si.active .snum{background:var(--blue);border-color:var(--blue);color:#fff}
+.si.done .snum{background:var(--green);border-color:var(--green);color:#fff}
+.sline{width:16px;height:1px;background:var(--border2)}
+/* SECTION LABEL */
+.sl{font-size:10px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:var(--text3);margin-bottom:.4rem;display:flex;align-items:center;gap:6px}
+.sl::after{content:'';flex:1;height:1px;background:var(--border)}
+/* FORM */
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:.65rem}
+.field label{font-size:11.5px;color:var(--text2);font-weight:500}
+input[type=text],input[type=number],input[type=password],textarea,select{width:100%;background:var(--elevated);border:1px solid var(--border2);border-radius:var(--rsm);padding:8px 11px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;transition:border-color .2s,box-shadow .2s}
+input:focus,textarea:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(91,143,255,.1)}
+select option{background:var(--card)}
+textarea{resize:vertical;min-height:68px;line-height:1.55}
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 16px;border-radius:var(--rsm);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s;white-space:nowrap}
+.btn-p{width:100%;background:linear-gradient(135deg,var(--blue),var(--indigo));color:#fff;box-shadow:0 2px 14px rgba(91,143,255,.22)}
+.btn-p:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.btn-p:active{transform:translateY(0)}
+.btn-p:disabled{background:var(--elevated);color:var(--text3);box-shadow:none;cursor:not-allowed;transform:none;filter:none}
+.btn-g{background:transparent;color:var(--text2);border:1px solid var(--border2)}
+.btn-g:hover{color:var(--text);border-color:var(--border3);background:var(--hover)}
+.btn-sm{padding:5px 10px;font-size:12px;border-radius:6px}
+.btn-dash{width:100%;background:transparent;border:1px dashed var(--border2);color:var(--text3);border-radius:var(--rsm);padding:7px;font-size:12px;font-family:var(--font);cursor:pointer;transition:all .15s}
+.btn-dash:hover{color:var(--blue);border-color:var(--blue);background:rgba(91,143,255,.06)}
+/* VARIABLE BLOCKS */
+.vblock{background:var(--elevated);border:1px solid var(--border);border-radius:var(--rsm);padding:10px 12px;margin-bottom:8px}
+.vblock.iv{border-left:2px solid var(--blue)}
+.vblock.dv{border-left:2px solid var(--violet)}
+.vname{background:transparent;border:none;border-bottom:1px solid var(--border2);border-radius:0;padding:2px 0;font-weight:600;font-size:13px;width:100%}
+.vblock.iv .vname{color:var(--blue)}
+.vblock.dv .vname{color:var(--violet)}
+.vname:focus{border-bottom-color:var(--blue);box-shadow:none}
+.ctag{display:inline-flex;align-items:center;gap:5px;background:rgba(91,143,255,.1);border:1px solid rgba(91,143,255,.2);color:var(--blue);border-radius:5px;padding:3px 8px;font-size:11.5px;margin:2px}
+.cdel{cursor:pointer;color:var(--text3);font-size:13px;transition:color .1s}
+.cdel:hover{color:var(--red)}
+/* TEST BUTTONS */
+.tgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.tbtn{background:var(--elevated);border:1px solid var(--border2);border-radius:var(--rsm);padding:9px 10px;cursor:pointer;transition:all .15s;text-align:left;font-family:var(--font)}
+.tbtn:hover{border-color:var(--border3);background:var(--hover)}
+.tbtn.sel{background:rgba(91,143,255,.1);border-color:var(--blue)}
+.tbtn .tn{display:block;font-size:12.5px;font-weight:600;color:var(--text);margin-bottom:2px}
+.tbtn .td{font-size:10.5px;color:var(--text2)}
+.tbtn.sel .tn{color:var(--blue)}
+/* DROP ZONE */
+.dz{border:2px dashed var(--border2);border-radius:var(--r);padding:1.6rem 1.2rem;text-align:center;cursor:pointer;transition:all .2s;position:relative;background:var(--card)}
+.dz:hover,.dz.over{border-color:var(--blue);background:rgba(91,143,255,.05);box-shadow:0 0 22px rgba(91,143,255,.12)}
+.dz input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;border:none;padding:0;background:none}
+/* TABLE */
+.cmt{width:100%;border-collapse:collapse;font-size:12.5px}
+.cmt th{padding:6px 10px;background:var(--elevated);color:var(--text2);font-weight:500;text-align:left;border-bottom:1px solid var(--border)}
+.cmt td{padding:5px 10px;border-bottom:1px solid var(--border)}
+.cmt tr:last-child td{border-bottom:none}
+.ptw{overflow-x:auto;max-height:160px;overflow-y:auto}
+.pt{width:100%;border-collapse:collapse;font-size:11.5px;font-family:var(--mono)}
+.pt th{position:sticky;top:0;background:var(--elevated);color:var(--text2);padding:5px 10px;font-weight:500;border-bottom:1px solid var(--border2);white-space:nowrap}
+.pt td{padding:4px 10px;border-bottom:1px solid var(--border);color:var(--text)}
+.pt tr:hover td{background:var(--hover)}
+/* ALERTS */
+.alert{padding:9px 13px;border-radius:var(--rsm);font-size:12.5px}
+.ai{background:rgba(91,143,255,.08);border:1px solid rgba(91,143,255,.2);color:var(--blue)}
+.aw{background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);color:var(--amber)}
+.as{background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);color:var(--green)}
+.ae{background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);color:var(--red)}
+/* REC BOX */
+.recbox{background:rgba(91,143,255,.08);border:1px solid rgba(91,143,255,.2);border-radius:var(--rsm);padding:9px 12px;font-size:12.5px;color:var(--blue);display:flex;align-items:center;gap:8px}
+.recbox::before{content:'✦';font-size:11px}
+.oc{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text2);cursor:pointer;padding:3px 0}
+.oc input{width:auto;accent-color:var(--blue)}
+/* EMPTY */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:1.1rem;text-align:center}
+.empty-icon{width:68px;height:68px;border-radius:18px;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:26px}
+.empty h2{font-size:17px;font-weight:600;color:var(--text2)}
+.empty p{font-size:13px;color:var(--text3);max-width:300px;line-height:1.75}
+.pills{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.pill{background:var(--card);border:1px solid var(--border2);border-radius:20px;padding:4px 12px;font-size:11.5px;color:var(--text2)}
+/* RESULTS */
+.sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:10px;margin-bottom:1.2rem}
+.sc{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;text-align:center}
+.sc .val{font-size:21px;font-weight:700;color:var(--blue);font-family:var(--mono);letter-spacing:-.5px}
+.sc .lbl{font-size:11px;color:var(--text3);margin-top:3px}
+.sc .sub{font-size:10.5px;color:var(--text3);margin-top:2px}
+/* STAT RESULT TABLE */
+.rbox{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1.2rem}
+.rhead{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;background:var(--card);border-bottom:1px solid var(--border)}
+.rhtitle{font-size:12px;font-weight:500;color:var(--text2);display:flex;align-items:center;gap:7px}
+.rcode{font-family:var(--mono);font-size:12px;color:#9fafcc;padding:14px 16px;line-height:1.75;overflow-x:auto;white-space:pre}
+.routput{font-family:var(--mono);font-size:12px;color:var(--green);padding:14px 16px;line-height:1.75;overflow-x:auto;white-space:pre;border-top:1px solid var(--border)}
+/* STAT RESULT CARDS */
+.stat-result-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:1.2rem}
+.src{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px}
+.src .srlbl{font-size:11px;color:var(--text3);margin-bottom:6px;font-weight:500;letter-spacing:.5px;text-transform:uppercase}
+.src .srval{font-size:18px;font-weight:700;font-family:var(--mono);color:var(--text)}
+.src .srsub{font-size:11.5px;color:var(--text2);margin-top:4px}
+.sig-badge{display:inline-block;padding:3px 10px;border-radius:5px;font-size:12px;font-weight:600;margin-top:6px}
+.sig-yes{background:rgba(52,211,153,.12);color:var(--green);border:1px solid rgba(52,211,153,.25)}
+.sig-no{background:rgba(248,113,113,.1);color:var(--red);border:1px solid rgba(248,113,113,.2)}
+/* INTERPRETATION */
+.ibox{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:var(--r);padding:1.3rem 1.5rem;box-shadow:0 0 22px rgba(91,143,255,.08)}
+.ibox h3{font-size:14px;font-weight:700;color:var(--blue);margin-bottom:.85rem;display:flex;align-items:center;gap:8px}
+.ibody{font-size:13.5px;color:var(--text);line-height:1.85}
+.ibody strong{color:var(--indigo);font-weight:600}
+.ibody p{margin-bottom:.75rem}
+.ibody p:last-child{margin-bottom:0}
+/* MISC */
+.rtitle{font-size:20px;font-weight:700;letter-spacing:-.4px;margin-bottom:4px}
+.rsub{font-size:13px;color:var(--text2);margin-bottom:1.2rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tag{background:rgba(91,143,255,.12);color:var(--blue);border:1px solid rgba(91,143,255,.25);border-radius:5px;padding:2px 8px;font-size:11px;font-weight:500}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid var(--border2);border-top-color:var(--blue);border-radius:50%;animation:sp .6s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.cur::after{content:'▋';animation:bl .9s infinite}
+@keyframes bl{0%,100%{opacity:1}50%{opacity:0}}
+.mbg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;align-items:center;justify-content:center}
+.mbg.open{display:flex}
+.modal{background:var(--card);border:1px solid var(--border2);border-radius:var(--rlg);padding:1.75rem;width:440px;max-width:92vw;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.mhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem}
+.mhead h3{font-size:15px;font-weight:700}
+.mclose{background:none;border:none;color:var(--text2);font-size:22px;cursor:pointer;line-height:1}
+.mclose:hover{color:var(--text)}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--elevated);border-radius:3px}
+body::before{content:'';position:fixed;top:-180px;right:-180px;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(91,143,255,.04) 0%,transparent 70%);pointer-events:none;z-index:0}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="logo">
+    <div class="logo-icon">Σ</div>
+    <div><span class="logo-name">StatAnalyzer</span><span class="logo-sub">통계 분석기</span></div>
+  </div>
+  <div class="hdr-r">
+    <div class="spill"><div class="dot on"></div><span>JS 통계 엔진 준비됨</span></div>
+    <div class="spill"><div class="dot" id="gd"></div><span id="gl">GROQ 미연결</span></div>
+    <button class="btn btn-g btn-sm" onclick="openModal()">⚙ 설정</button>
+  </div>
+</header>
+
+<!-- SETTINGS MODAL -->
+<div class="mbg" id="smodal">
+  <div class="modal">
+    <div class="mhead"><h3>API 설정</h3><button class="mclose" onclick="closeModal()">×</button></div>
+    <div class="field">
+      <label>GROQ API Key</label>
+      <input type="password" id="gki" placeholder="gsk_..." />
+      <span style="font-size:11px;color:var(--text3);margin-top:4px;"><a href="https://console.groq.com/keys" target="_blank" style="color:var(--blue)">console.groq.com</a>에서 무료 발급</span>
+    </div>
+    <div class="field" style="margin-top:.5rem">
+      <label>모델</label>
+      <select id="gms">
+        <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile (추천)</option>
+        <option value="llama-3.1-8b-instant">llama-3.1-8b-instant (빠름)</option>
+        <option value="mixtral-8x7b-32768">mixtral-8x7b-32768</option>
+      </select>
+    </div>
+    <button class="btn btn-p" style="margin-top:1rem" onclick="saveSettings()">저장</button>
+  </div>
+</div>
+
+<div class="layout">
+<aside class="sidebar">
+  <div class="steps">
+    <div class="si active" id="si1" onclick="goStep(1)"><div class="snum">1</div>변수 설정</div>
+    <div class="sline"></div>
+    <div class="si" id="si2" onclick="goStep(2)"><div class="snum">2</div>데이터</div>
+    <div class="sline"></div>
+    <div class="si" id="si3" onclick="goStep(3)"><div class="snum">3</div>검정</div>
+  </div>
+
+  <!-- STEP 1 -->
+  <div id="s1">
+    <div class="sl">종속 변수 DV</div>
+    <div id="dvlist"></div>
+    <button class="btn-dash" onclick="addDV()">+ 종속 변수 추가</button>
+    <div style="height:.85rem"></div>
+    <div class="sl">독립 변수 IV</div>
+    <div id="ivlist"></div>
+    <button class="btn-dash" onclick="addIV()">+ 독립 변수 추가</button>
+    <div style="height:.85rem"></div>
+    <div class="sl">연구 목적 / 가설</div>
+    <textarea id="rq" placeholder="예: 교수법(강의식 vs 토론식)에 따라 시험 점수에 유의미한 차이가 있는가?"></textarea>
+    <div style="height:.6rem"></div>
+    <button class="btn btn-p" onclick="goStep(2)">다음 → 데이터 입력</button>
+  </div>
+
+  <!-- STEP 2 -->
+  <div id="s2" style="display:none">
+    <div class="sl">데이터 입력 방식</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:.85rem">
+      <button class="tbtn sel" id="me" onclick="setMode('excel')"><span class="tn">📊 엑셀 업로드</span><span class="td">.xlsx / .csv</span></button>
+      <button class="tbtn" id="ms" onclick="setMode('sample')"><span class="tn">🎲 샘플 생성</span><span class="td">테스트용 데이터</span></button>
+    </div>
+    <!-- Excel -->
+    <div id="pe">
+      <div class="dz" id="dzbox" ondragover="onDragOver(event)" ondragleave="onDragLeave()" ondrop="onDrop(event)">
+        <input type="file" accept=".xlsx,.xls,.csv" onchange="onFileChange(event)" />
+        <div style="font-size:26px;margin-bottom:.55rem">📂</div>
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px">파일을 끌어다 놓거나 클릭</div>
+        <div style="font-size:12px;color:var(--text2)">.xlsx · .xls · .csv 지원</div>
+      </div>
+      <div id="finfo" style="display:none;margin-top:.65rem"></div>
+      <div id="colmap" style="display:none;margin-top:.85rem">
+        <div class="sl">열 매핑</div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.1rem;overflow-x:auto">
+          <table class="cmt" id="cmtbl"></table>
+        </div>
+        <div style="margin-top:.7rem">
+          <div class="sl">미리보기</div>
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden">
+            <div class="ptw"><table class="pt" id="ptbl"></table></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Sample -->
+    <div id="ps" style="display:none">
+      <div class="field"><label>조건당 N</label><input type="number" id="gn" value="20" min="5" max="300"/></div>
+      <div class="field"><label>효과 크기</label>
+        <select id="ge">
+          <option value="small">소 (d ≈ 0.2)</option>
+          <option value="medium" selected>중 (d ≈ 0.5)</option>
+          <option value="large">대 (d ≈ 0.8)</option>
+        </select>
+      </div>
+      <button class="btn btn-g" style="width:100%;margin-bottom:6px" onclick="genSample()">샘플 데이터 생성</button>
+      <div id="sprev" style="display:none"></div>
+    </div>
+    <div style="height:.6rem"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
+      <button class="btn btn-g" onclick="goStep(1)">← 이전</button>
+      <button class="btn btn-p" onclick="goStep(3)">다음 → 검정</button>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div id="s3" style="display:none">
+    <div class="sl">추천 검정</div>
+    <div class="recbox" id="recbox" style="margin-bottom:.85rem">–</div>
+    <div class="sl">검정 선택</div>
+    <div class="tgrid" id="tgrid"></div>
+    <div style="height:.7rem"></div>
+    <div class="field"><label>유의수준 α</label>
+      <select id="alpha"><option value="0.05" selected>0.05</option><option value="0.01">0.01</option><option value="0.001">0.001</option></select>
+    </div>
+    <div class="sl" style="margin-top:.1rem">추가 옵션</div>
+    <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:.85rem">
+      <label class="oc"><input type="checkbox" id="op"/> 사후검정 (Tukey HSD)</label>
+      <label class="oc"><input type="checkbox" id="oe" checked/> 효과 크기 (Cohen's d / η²)</label>
+      <label class="oc"><input type="checkbox" id="on"/> 정규성 검정 (Shapiro-Wilk)</label>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
+      <button class="btn btn-g" onclick="goStep(2)">← 이전</button>
+      <button class="btn btn-p" id="rbtn" onclick="runAnalysis()"><span id="rlbl">▶ 분석 실행</span></button>
+    </div>
+  </div>
+</aside>
+
+<main class="main">
+  <div id="estate" class="empty">
+    <div class="empty-icon">📊</div>
+    <h2>분석 준비 완료</h2>
+    <p>변수를 설정하고 데이터를 업로드한 뒤 분석을 실행하세요</p>
+    <div class="pills">
+      <span class="pill">t-검정</span><span class="pill">ANOVA</span><span class="pill">회귀분석</span>
+      <span class="pill">카이제곱</span><span class="pill">Mann-Whitney</span><span class="pill">AI 해석</span>
+    </div>
+  </div>
+  <div id="results" style="display:none"></div>
+</main>
+</div>
+
+<script>
+// ── STATE ──
+let groqKey='';
+let groqModel='llama-3.3-70b-versatile';
+let ivList=[],dvList=[];
+let dataMode='excel';
+let uploadedData=null;
+let sampleData=null;
+let selTest='';
+
+const TESTS=[
+  {id:'ttest',       name:'t-검정',         desc:'두 집단 평균 비교'},
+  {id:'anova',       name:'일원 ANOVA',     desc:'3개+ 집단 비교'},
+  {id:'anova2',      name:'이원 ANOVA',     desc:'두 IV & 상호작용'},
+  {id:'regression',  name:'회귀분석',       desc:'예측 / 관계 추정'},
+  {id:'chi2',        name:'카이제곱',       desc:'범주형 독립성'},
+  {id:'mannwhitney', name:'Mann-Whitney',   desc:'비모수 두 집단'},
+  {id:'kruskalwallis',name:'Kruskal-Wallis',desc:'비모수 다집단'},
+  {id:'pearson',     name:'상관분석',       desc:'Pearson r'},
+];
+
+// ── SETTINGS ──
+if(groqKey){document.getElementById('gd').className='dot on';document.getElementById('gl').textContent='GROQ 연결됨';}
+function openModal(){document.getElementById('gki').value=groqKey;document.getElementById('gms').value=groqModel;document.getElementById('smodal').classList.add('open');}
+function closeModal(){document.getElementById('smodal').classList.remove('open');}
+function saveSettings(){
+  groqKey=document.getElementById('gki').value.trim();
+  groqModel=document.getElementById('gms').value;
+  document.getElementById('gd').className='dot'+(groqKey?' on':'');
+  document.getElementById('gl').textContent=groqKey?'GROQ 연결됨':'GROQ 미연결';
+  closeModal();
+}
+
+// ── STEPS ──
+function goStep(n){
+  if(n===2&&(!ivList.length||!dvList.length)){alert('독립/종속 변수를 최소 1개씩 추가해주세요.');return;}
+  if(n===3){calcRec();buildTGrid();}
+  ['s1','s2','s3'].forEach((id,i)=>document.getElementById(id).style.display=i+1===n?'block':'none');
+  ['si1','si2','si3'].forEach((id,i)=>{
+    const el=document.getElementById(id);
+    el.className='si'+(i+1===n?' active':i+1<n?' done':'');
+    el.querySelector('.snum').textContent=i+1<n?'✓':i+1;
+  });
+}
+
+// ── DV / IV ──
+function addDV(){dvList.push({id:'dv'+Date.now(),name:'',scale:'continuous'});renderDV();}
+function removeDV(id){dvList=dvList.filter(d=>d.id!==id);renderDV();}
+function addIV(){ivList.push({id:'iv'+Date.now(),name:'',conditions:[],type:'between'});renderIV();}
+function removeIV(id){ivList=ivList.filter(v=>v.id!==id);renderIV();}
+function addCond(id){
+  const iv=ivList.find(v=>v.id===id);
+  const inp=document.getElementById('ci'+id);
+  const val=inp.value.trim();if(!val)return;
+  iv.conditions.push(val);inp.value='';renderIV();
+}
+function remCond(id,i){ivList.find(v=>v.id===id).conditions.splice(i,1);renderIV();}
+
+function renderDV(){
+  const c=document.getElementById('dvlist');
+  if(!dvList.length){c.innerHTML='<div style="font-size:12px;color:var(--text3);padding:8px 10px;background:var(--elevated);border-radius:6px;margin-bottom:8px">없음</div>';return;}
+  c.innerHTML=dvList.map(d=>`<div class="vblock dv" style="margin-bottom:8px">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+      <input class="vname" value="${esc(d.name)}" placeholder="변수명 (예: 시험점수)" oninput="dvList.find(x=>x.id==='${d.id}').name=this.value"/>
+      <select style="width:auto;padding:3px 7px;font-size:11px" onchange="dvList.find(x=>x.id==='${d.id}').scale=this.value">
+        <option value="continuous" ${d.scale==='continuous'?'selected':''}>연속형</option>
+        <option value="ordinal" ${d.scale==='ordinal'?'selected':''}>순위형</option>
+        <option value="categorical" ${d.scale==='categorical'?'selected':''}>범주형</option>
+      </select>
+      <button onclick="removeDV('${d.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:17px;line-height:1;flex-shrink:0">×</button>
+    </div></div>`).join('');
+}
+
+function renderIV(){
+  const c=document.getElementById('ivlist');
+  if(!ivList.length){c.innerHTML='<div style="font-size:12px;color:var(--text3);padding:8px 10px;background:var(--elevated);border-radius:6px;margin-bottom:8px">없음</div>';return;}
+  c.innerHTML=ivList.map(iv=>`<div class="vblock iv" style="margin-bottom:8px">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+      <input class="vname" value="${esc(iv.name)}" placeholder="변수명 (예: 교수법)" oninput="ivList.find(x=>x.id==='${iv.id}').name=this.value"/>
+      <select style="width:auto;padding:3px 7px;font-size:11px" onchange="ivList.find(x=>x.id==='${iv.id}').type=this.value">
+        <option value="between" ${iv.type==='between'?'selected':''}>피험자간</option>
+        <option value="within" ${iv.type==='within'?'selected':''}>피험자내</option>
+      </select>
+      <button onclick="removeIV('${iv.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:17px;line-height:1;flex-shrink:0">×</button>
+    </div>
+    <div style="margin-bottom:7px">${iv.conditions.map((c,i)=>`<span class="ctag">${esc(c)}<span class="cdel" onclick="remCond('${iv.id}',${i})">×</span></span>`).join('')}</div>
+    <div style="display:flex;gap:6px">
+      <input type="text" id="ci${iv.id}" placeholder="조건명 입력 후 Enter" style="flex:1" onkeydown="if(event.key==='Enter')addCond('${iv.id}')"/>
+      <button class="btn btn-g btn-sm" onclick="addCond('${iv.id}')">+</button>
+    </div>
+    <div style="margin-top:5px;font-size:11px;color:var(--text3)">${iv.conditions.length}개 조건</div>
+  </div>`).join('');
+}
+
+// ── MODE ──
+function setMode(m){
+  dataMode=m;
+  document.getElementById('me').classList.toggle('sel',m==='excel');
+  document.getElementById('ms').classList.toggle('sel',m==='sample');
+  document.getElementById('pe').style.display=m==='excel'?'block':'none';
+  document.getElementById('ps').style.display=m==='sample'?'block':'none';
+}
+
+// ── FILE UPLOAD ──
+function onDragOver(e){e.preventDefault();document.getElementById('dzbox').classList.add('over');}
+function onDragLeave(){document.getElementById('dzbox').classList.remove('over');}
+function onDrop(e){e.preventDefault();document.getElementById('dzbox').classList.remove('over');const f=e.dataTransfer.files[0];if(f)processFile(f);}
+function onFileChange(e){if(e.target.files[0])processFile(e.target.files[0]);}
+
+function processFile(file){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      if(raw.length<2){alert('데이터가 너무 적습니다.');return;}
+      const headers=raw[0].map(String);
+      const rows=raw.slice(1).filter(r=>r.some(v=>v!==''));
+      uploadedData={headers,rows};
+      const fi=document.getElementById('finfo');
+      fi.style.display='block';
+      fi.innerHTML=`<div class="alert as">✓ ${esc(file.name)} &nbsp;(${rows.length}행 × ${headers.length}열)</div>`;
+      document.getElementById('colmap').style.display='block';
+      buildColMap();buildPreview();
+    }catch(err){alert('파일 오류: '+err.message);}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function buildColMap(){
+  if(!uploadedData)return;
+  const {headers}=uploadedData;
+  const allVars=[...dvList.map(d=>({name:d.name||'DV',role:'DV',id:d.id})),...ivList.map(v=>({name:v.name||'IV',role:'IV',id:v.id}))];
+  let html='<thead><tr><th>변수</th><th>역할</th><th>열 선택</th></tr></thead><tbody>';
+  allVars.forEach(v=>{
+    const auto=headers.find(h=>h.toLowerCase()===v.name.toLowerCase())||'';
+    const opts=['(사용 안 함)',...headers].map(h=>`<option value="${h==='(사용 안 함)'?'':h}" ${(auto&&h===auto)||(!auto&&h==='(사용 안 함)')?'selected':''}>${esc(h)}</option>`).join('');
+    html+=`<tr><td style="font-weight:500;color:${v.role==='DV'?'var(--violet)':'var(--blue)'}">${esc(v.name)}</td><td style="color:var(--text2)">${v.role}</td><td><select id="map${v.id}">${opts}</select></td></tr>`;
+  });
+  html+='</tbody>';
+  document.getElementById('cmtbl').innerHTML=html;
+}
+
+function buildPreview(){
+  if(!uploadedData)return;
+  const {headers,rows}=uploadedData;
+  const prev=rows.slice(0,7);
+  document.getElementById('ptbl').innerHTML=
+    `<thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>`+
+    prev.map(r=>`<tr>${headers.map((_,i)=>`<td>${esc(String(r[i]??''))}</td>`).join('')}</tr>`).join('')+'</tbody>';
+}
+
+// ── SAMPLE ──
+function genSample(){
+  const iv=ivList[0];if(!iv||!iv.conditions.length){alert('독립 변수와 조건을 먼저 입력하세요.');return;}
+  const n=parseInt(document.getElementById('gn').value)||20;
+  const d={'small':.2,'medium':.5,'large':.8}[document.getElementById('ge').value];
+  const sd=15;
+  sampleData={condData:iv.conditions.map((_,i)=>{
+    const mean=70+i*d*sd;
+    return Array.from({length:n},()=>{
+      const u1=Math.random(),u2=Math.random();
+      return Math.round((mean+Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2)*sd)*10)/10;
+    });
+  })};
+  const sp=document.getElementById('sprev');sp.style.display='block';
+  sp.innerHTML=`<div class="alert as" style="margin-bottom:.5rem">샘플 생성: ${iv.conditions.length}조건 × ${n}명</div>`+
+    iv.conditions.map((c,i)=>`<div style="font-size:11.5px;color:var(--text2);padding:1px 0"><span style="color:var(--blue);font-weight:500">${esc(c)}</span>: M=${(sampleData.condData[i].reduce((a,b)=>a+b,0)/n).toFixed(2)}</div>`).join('');
+}
+
+// ── RECOMMEND ──
+function calcRec(){
+  const iv=ivList[0],dv=dvList[0];if(!iv||!dv)return;
+  const nc=iv.conditions.length,sc=dv.scale;
+  let rec='',tid='';
+  if(sc==='categorical'){rec='카이제곱 검정 (χ²)';tid='chi2';}
+  else if(nc===2){rec=sc==='ordinal'?'Mann-Whitney U (비모수)':'독립표본 t-검정';tid=sc==='ordinal'?'mannwhitney':'ttest';}
+  else if(nc>2){rec=sc==='ordinal'?'Kruskal-Wallis (비모수)':'일원 ANOVA';tid=sc==='ordinal'?'kruskalwallis':'anova';}
+  else{rec='조건을 2개 이상 추가하세요';tid='';}
+  if(ivList.length>1&&sc==='continuous'){rec='이원 ANOVA 권장';tid='anova2';}
+  selTest=tid;
+  document.getElementById('recbox').textContent=rec||'–';
+}
+function buildTGrid(){
+  document.getElementById('tgrid').innerHTML=TESTS.map(t=>`<button class="tbtn ${selTest===t.id?'sel':''}" onclick="pickTest('${t.id}')"><span class="tn">${t.name}</span><span class="td">${t.desc}</span></button>`).join('');
+}
+function pickTest(id){selTest=id;buildTGrid();}
+
+// ── GET VECTORS ──
+function getVectors(){
+  const iv=ivList[0];if(!iv)return null;
+  if(dataMode==='sample'){
+    if(!sampleData){alert('샘플 데이터를 먼저 생성해주세요.');return null;}
+    // ensure condData length matches conditions
+    const vecs=iv.conditions.map((_,i)=>sampleData.condData[i]||[]);
+    if(vecs.some(v=>!v||!v.length)){alert('샘플 데이터와 조건 수가 맞지 않습니다. 샘플을 다시 생성해주세요.');return null;}
+    return vecs;
+  }
+  if(!uploadedData)return null;
+  const dv=dvList[0];if(!dv)return null;
+  const dvEl=document.getElementById('map'+dv.id);
+  const ivEl=document.getElementById('map'+iv.id);
+  if(!dvEl||!ivEl){alert('열 매핑을 완료해주세요.');return null;}
+  const dvCol=dvEl.value,ivCol=ivEl.value;
+  if(!dvCol||!ivCol){alert('DV와 IV 열을 선택해주세요.');return null;}
+  const {headers,rows}=uploadedData;
+  const di=headers.indexOf(dvCol),ii=headers.indexOf(ivCol);
+  if(di<0||ii<0){alert('열을 찾을 수 없습니다.');return null;}
+  return iv.conditions.map(cond=>rows.filter(r=>String(r[ii]).trim()===cond).map(r=>parseFloat(r[di])).filter(v=>!isNaN(v)));
+}
+
+// ────────────────────────────────────────────
+// ── JS 통계 엔진 ──
+// ────────────────────────────────────────────
+const Stat={
+  mean:v=>v.reduce((a,b)=>a+b,0)/v.length,
+  variance:(v,ddof=1)=>{const m=Stat.mean(v);return v.reduce((a,b)=>a+(b-m)**2,0)/(v.length-ddof);},
+  sd:(v,ddof=1)=>Math.sqrt(Stat.variance(v,ddof)),
+  // t-distribution CDF (two-tailed p-value) via regularized incomplete beta
+  tPval(t,df){
+    const x=df/(df+t*t);
+    // two-tailed p = I_x(df/2, 1/2)
+    return Math.min(1, incompleteBeta(df/2, 0.5, x));
+  },
+  fPval(F,df1,df2){
+    const x=df2/(df2+df1*F);
+    return Math.min(1, incompleteBeta(df2/2, df1/2, x));
+  },
+  // chi2 p-value
+  chi2Pval(x,df){
+    return 1-gammaIncomplete(df/2,x/2);
+  },
+  // Shapiro-Wilk (approximation for n<=50)
+  shapiroWilk(v){
+    const n=v.length;
+    if(n<3)return{W:1,p:1};
+    const sorted=[...v].sort((a,b)=>a-b);
+    const m=Stat.mean(sorted);
+    const ss=sorted.reduce((a,b)=>a+(b-m)**2,0);
+    // approximate W using Royston's method
+    const a=[];
+    const c=[0,0.221157,-0.147981,-2.07119,4.434685,-2.706056];
+    const mn=normalQuantile((0.5/n));
+    for(let i=0;i<Math.floor(n/2);i++){
+      const phi=normalQuantile((i+1-0.375)/(n+0.25));
+      a[i]=phi; // simplified
+    }
+    let num=0;
+    for(let i=0;i<Math.floor(n/2);i++) num+=a[i]*(sorted[n-1-i]-sorted[i]);
+    const W=Math.min(1,(num*num)/ss);
+    // approximate p-value
+    const mu=-1.2725+1.0521*Math.log(n);
+    const sigma=1.0308-0.26763*Math.log(n);
+    const z=(Math.log(1-W)-mu)/sigma;
+    const p=1-normalCDF(z);
+    return{W:+W.toFixed(5),p:+Math.max(0.001,Math.min(0.999,p)).toFixed(4)};
+  },
+};
+
+// Math helpers
+function normalCDF(z){
+  const t=1/(1+0.2316419*Math.abs(z));
+  const p=1-0.3989422880*Math.exp(-z*z/2)*(0.319381530*t-0.356563782*t**2+1.781477937*t**3-1.821255978*t**4+1.330274429*t**5);
+  return z>0?p:1-p;
+}
+function normalQuantile(p){
+  // Beasley-Springer-Moro
+  const a=[2.50662823884,-18.61500062529,41.39119773534,-25.44106049637];
+  const b=[-8.47351093090,23.08336743743,-21.06224101826,3.13082909833];
+  const c=[0.3374754822726147,0.9761690190917186,0.1607979714918209,0.0276438810333863,0.0038405729373609,0.0003951896511349,0.0000321767881768,0.0000002888167364,0.0000003960315187];
+  if(p<=0)return -6;if(p>=1)return 6;
+  if(p<0.02425){
+    const q=Math.sqrt(-2*Math.log(p));
+    const num=(((((((c[7]*q+c[6])*q+c[5])*q+c[4])*q+c[3])*q+c[2])*q+c[1])*q+c[0]);
+    const den=(((((((c[8]*q+1)*q+1)*q+1)*q+1)*q+1)*q+1)*q+1);
+    return num/den;
+  }
+  if(p>0.97575){
+    const q=Math.sqrt(-2*Math.log(1-p));
+    const num=(((((((c[7]*q+c[6])*q+c[5])*q+c[4])*q+c[3])*q+c[2])*q+c[1])*q+c[0]);
+    const den=(((((((c[8]*q+1)*q+1)*q+1)*q+1)*q+1)*q+1)*q+1);
+    return -num/den;
+  }
+  const q=p-0.5;const r=q*q;
+  return (((((a[3]*r+a[2])*r+a[1])*r+a[0])*q)/(((((b[3]*r+b[2])*r+b[1])*r+b[0])*r+1)));
+}
+function gammaIncomplete(a,x){
+  // regularized lower incomplete gamma via series
+  if(x<0)return 0;
+  if(x===0)return 0;
+  let sum=1/a,term=1/a;
+  for(let i=1;i<200;i++){term*=x/(a+i);sum+=term;if(term<1e-10)break;}
+  return Math.min(1,sum*Math.exp(-x+a*Math.log(x)-logGamma(a)));
+}
+function logGamma(z){
+  const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];
+  let x=z,y=z,tmp=x+5.5;
+  tmp-=(x+0.5)*Math.log(tmp);
+  let ser=1.000000000190015;
+  for(let i=0;i<6;i++){ser+=c[i]/++y;}
+  return -tmp+Math.log(2.5066282746310005*ser/x);
+}
+function incompleteBeta(a,b,x){
+  if(x<0||x>1)return 0;
+  if(x===0)return 0;if(x===1)return 1;
+  const lbeta=logGamma(a)+logGamma(b)-logGamma(a+b);
+  // Use symmetry relation for numerical stability
+  if(x>(a+1)/(a+b+2)){
+    return 1-incompleteBeta(b,a,1-x);
+  }
+  const front=Math.exp(Math.log(x)*a+Math.log(1-x)*b-lbeta)/a;
+  let result=front*betaCF(a,b,x);
+  return Math.min(1,Math.max(0,result));
+}
+function betaCF(a,b,x){
+  const maxIt=200,eps=3e-7;
+  const qab=a+b,qap=a+1,qam=a-1;
+  let c=1,d=1-qab*x/qap;
+  if(Math.abs(d)<1e-30)d=1e-30;d=1/d;let h=d;
+  for(let m=1;m<=maxIt;m++){
+    const m2=2*m;
+    let aa=m*(b-m)*x/((qam+m2)*(a+m2));
+    d=1+aa*d;if(Math.abs(d)<1e-30)d=1e-30;
+    c=1+aa/c;if(Math.abs(c)<1e-30)c=1e-30;
+    d=1/d;h*=d*c;
+    aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2));
+    d=1+aa*d;if(Math.abs(d)<1e-30)d=1e-30;
+    c=1+aa/c;if(Math.abs(c)<1e-30)c=1e-30;
+    d=1/d;const del=d*c;h*=del;
+    if(Math.abs(del-1)<eps)break;
+  }
+  return h;
+}
+
+// ── MAIN STAT TESTS ──
+function runTTest(a,b,alpha){
+  const n1=a.length,n2=b.length;
+  const m1=Stat.mean(a),m2=Stat.mean(b);
+  const v1=Stat.variance(a),v2=Stat.variance(b);
+  const se=Math.sqrt(v1/n1+v2/n2);
+  const t=(m1-m2)/se;
+  // Welch df
+  const df=(v1/n1+v2/n2)**2/((v1/n1)**2/(n1-1)+(v2/n2)**2/(n2-1));
+  const p=Stat.tPval(t,df);
+  const sp=Math.sqrt(((n1-1)*v1+(n2-1)*v2)/(n1+n2-2));
+  const d=(m1-m2)/sp;
+  return{t:+t.toFixed(4),df:+df.toFixed(2),p:+p.toFixed(4),d:+d.toFixed(4),m1:+m1.toFixed(3),m2:+m2.toFixed(3),se:+se.toFixed(4),sig:p<alpha};
+}
+
+function runANOVA(groups,alpha){
+  const k=groups.length;
+  const ns=groups.map(g=>g.length);
+  const N=ns.reduce((a,b)=>a+b,0);
+  const means=groups.map(g=>Stat.mean(g));
+  const grandMean=groups.flat().reduce((a,b)=>a+b,0)/N;
+  const SSB=ns.reduce((a,n,i)=>a+n*(means[i]-grandMean)**2,0);
+  const SSW=groups.reduce((a,g)=>a+g.reduce((b,x)=>b+(x-Stat.mean(g))**2,0),0);
+  const dfB=k-1,dfW=N-k;
+  const MSB=SSB/dfB,MSW=SSW/dfW;
+  const F=MSB/MSW;
+  const p=Stat.fPval(F,dfB,dfW);
+  const eta2=SSB/(SSB+SSW);
+  return{F:+F.toFixed(4),dfB,dfW,p:+p.toFixed(4),eta2:+eta2.toFixed(4),MSB:+MSB.toFixed(3),MSW:+MSW.toFixed(3),SSB:+SSB.toFixed(3),SSW:+SSW.toFixed(3),means:means.map(m=>+m.toFixed(3)),sig:p<alpha};
+}
+
+function tukeyHSD(groups,labels,MSW,dfW){
+  const results=[];
+  const q_critical=3.8; // approximate for common group sizes
+  for(let i=0;i<groups.length;i++){
+    for(let j=i+1;j<groups.length;j++){
+      const diff=Stat.mean(groups[i])-Stat.mean(groups[j]);
+      const se=Math.sqrt(MSW*(1/groups[i].length+1/groups[j].length)/2);
+      const q=Math.abs(diff)/se;
+      results.push({pair:`${labels[i]} vs ${labels[j]}`,diff:+diff.toFixed(3),q:+q.toFixed(3),sig:q>q_critical});
+    }
+  }
+  return results;
+}
+
+function runMannWhitney(a,b,alpha){
+  const n1=a.length,n2=b.length;
+  let U1=0;
+  for(const x of a)for(const y of b){if(x>y)U1++;else if(x===y)U1+=0.5;}
+  const U2=n1*n2-U1;
+  const U=Math.min(U1,U2);
+  const mu=n1*n2/2;
+  const sigma=Math.sqrt(n1*n2*(n1+n2+1)/12);
+  const z=(U-mu)/sigma;
+  const p=2*(1-normalCDF(Math.abs(z)));
+  const r=Math.abs(z)/Math.sqrt(n1+n2);
+  return{U:+U.toFixed(0),z:+z.toFixed(4),p:+p.toFixed(4),r:+r.toFixed(4),n1,n2,sig:p<alpha};
+}
+
+function runKruskalWallis(groups,alpha){
+  const allVals=groups.flatMap((g,i)=>g.map(v=>({v,g:i})));
+  allVals.sort((a,b)=>a.v-b.v);
+  allVals.forEach((x,i)=>x.rank=i+1);
+  // handle ties
+  for(let i=0;i<allVals.length;){
+    let j=i;while(j<allVals.length&&allVals[j].v===allVals[i].v)j++;
+    const avgRank=(allVals[i].rank+allVals[j-1].rank)/2;
+    for(let k=i;k<j;k++)allVals[k].rank=avgRank;
+    i=j;
+  }
+  const N=allVals.length,k=groups.length;
+  const rankSums=new Array(k).fill(0);
+  allVals.forEach(x=>rankSums[x.g]+=x.rank);
+  let H=12/(N*(N+1))*rankSums.reduce((a,rs,i)=>a+rs**2/groups[i].length,0)-3*(N+1);
+  const df=k-1;
+  const p=Math.max(0.0001,1-gammaIncomplete(df/2,H/2));
+  return{H:+H.toFixed(4),df,p:+p.toFixed(4),sig:p<alpha};
+}
+
+function runChi2(groups,labels,alpha){
+  const k=groups.length;
+  const cats=[...new Set(groups.flat().map(String))].sort();
+  const observed=groups.map(g=>cats.map(c=>g.filter(x=>String(x)===c).length));
+  const rowTotals=observed.map(row=>row.reduce((a,b)=>a+b,0));
+  const colTotals=cats.map((_,j)=>observed.reduce((a,row)=>a+row[j],0));
+  const N=rowTotals.reduce((a,b)=>a+b,0);
+  let chi2=0;
+  observed.forEach((row,i)=>row.forEach((obs,j)=>{
+    const exp=rowTotals[i]*colTotals[j]/N;
+    if(exp>0)chi2+=(obs-exp)**2/exp;
+  }));
+  const df=(k-1)*(cats.length-1);
+  const p=Stat.chi2Pval(chi2,df);
+  return{chi2:+chi2.toFixed(4),df,p:+p.toFixed(4),sig:p<alpha,table:observed,cats,labels};
+}
+
+function runPearson(a,b,alpha){
+  const n=Math.min(a.length,b.length);
+  const ax=a.slice(0,n),bx=b.slice(0,n);
+  const ma=Stat.mean(ax),mb=Stat.mean(bx);
+  const num=ax.reduce((s,x,i)=>s+(x-ma)*(bx[i]-mb),0);
+  const den=Math.sqrt(ax.reduce((s,x)=>s+(x-ma)**2,0)*bx.reduce((s,x)=>s+(x-mb)**2,0));
+  const r=num/den;
+  const t=r*Math.sqrt((n-2)/(1-r**2));
+  const p=Stat.tPval(t,n-2);
+  return{r:+r.toFixed(4),t:+t.toFixed(4),df:n-2,p:+p.toFixed(4),n,sig:p<alpha};
+}
+
+function runRegression(x,y){
+  const n=Math.min(x.length,y.length);
+  const xv=x.slice(0,n),yv=y.slice(0,n);
+  const mx=Stat.mean(xv),my=Stat.mean(yv);
+  const b1=xv.reduce((s,xi,i)=>s+(xi-mx)*(yv[i]-my),0)/xv.reduce((s,xi)=>s+(xi-mx)**2,0);
+  const b0=my-b1*mx;
+  const yhat=xv.map(xi=>b0+b1*xi);
+  const SSres=yv.reduce((s,yi,i)=>s+(yi-yhat[i])**2,0);
+  const SStot=yv.reduce((s,yi)=>s+(yi-my)**2,0);
+  const r2=1-SSres/SStot;
+  const se=Math.sqrt(SSres/(n-2));
+  const seb1=se/Math.sqrt(xv.reduce((s,xi)=>s+(xi-mx)**2,0));
+  const t=b1/seb1;
+  const p=Stat.tPval(t,n-2);
+  return{b0:+b0.toFixed(4),b1:+b1.toFixed(4),r2:+r2.toFixed(4),se:+se.toFixed(4),t:+t.toFixed(4),p:+p.toFixed(4),df:n-2,sig:p<0.05};
+}
+
+// ── BUILD R CODE ──
+function buildRCode(vecs){
+  const iv=ivList[0],dv=dvList[0];
+  const conds=iv.conditions;
+  const yv=rn(dv.name||'y'),gv=rn(iv.name||'group');
+  let code='# StatAnalyzer 생성 R 코드\n\n';
+  conds.forEach((c,i)=>{code+=`${rn(c)} <- c(${vecs[i].join(', ')})\n`;});
+  code+=`\n${yv} <- c(${conds.map(c=>rn(c)).join(', ')})\n`;
+  code+=`${gv} <- factor(c(${conds.map((c,i)=>`rep("${c}",${vecs[i].length})`).join(', ')}))\n`;
+  code+=`df <- data.frame(${yv}, ${gv})\n\n`;
+  code+=`# 기술통계\ntapply(${yv}, ${gv}, function(x) c(N=length(x), M=round(mean(x),3), SD=round(sd(x),3)))\n\n`;
+  if(selTest==='ttest'){const a=rn(conds[0]),b=rn(conds[1]||conds[0]);code+=`# t-검정\nt.test(${a}, ${b})\n\n# Cohen's d\n(mean(${a})-mean(${b})) / sqrt(((length(${a})-1)*var(${a})+(length(${b})-1)*var(${b}))/(length(${a})+length(${b})-2))\n`;}
+  else if(selTest==='anova'){code+=`# 일원 ANOVA\nresult <- aov(${yv} ~ ${gv}, data=df)\nsummary(result)\n\n# Tukey HSD\nTukeyHSD(result)\n\n# Eta-squared\nss <- summary(result)[[1]]\nss["Sum Sq"][1,1] / sum(ss["Sum Sq"])\n`;}
+  else if(selTest==='mannwhitney'){code+=`# Mann-Whitney U\nwilcox.test(${rn(conds[0])}, ${rn(conds[1]||conds[0])})\n`;}
+  else if(selTest==='kruskalwallis'){code+=`# Kruskal-Wallis\nkruskal.test(${yv} ~ ${gv}, data=df)\n`;}
+  else if(selTest==='chi2'){code+=`# 카이제곱\ntbl <- table(${yv}, ${gv})\nchisq.test(tbl)\n`;}
+  else if(selTest==='pearson'){code+=`# 상관분석\ncor.test(${rn(conds[0])}, ${rn(conds[1]||conds[0])})\n`;}
+  else if(selTest==='regression'){code+=`# 회귀분석\nsummary(lm(${yv} ~ ${gv}, data=df))\n`;}
+  return code;
+}
+
+// ── RUN ANALYSIS ──
+function runAnalysis(){
+  if(!selTest){alert('검정 방법을 선택해주세요.');return;}
+  const vecs=getVectors();if(!vecs)return;
+  if(vecs.some(v=>!v.length)){alert('모든 조건의 데이터를 확인해주세요.\n조건명이 엑셀의 값과 정확히 일치해야 합니다.');return;}
+  const btn=document.getElementById('rbtn'),lbl=document.getElementById('rlbl');
+  btn.disabled=true;lbl.innerHTML='<span class="spin"></span> 분석중...';
+  document.getElementById('estate').style.display='none';
+  document.getElementById('results').style.display='block';
+
+  // slight delay for UI update
+  setTimeout(()=>{
+    try{
+      const alpha=parseFloat(document.getElementById('alpha').value);
+      const doEffect=document.getElementById('oe').checked;
+      const doNorm=document.getElementById('on').checked;
+      const doPosthoc=document.getElementById('op').checked;
+      const iv=ivList[0],dv=dvList[0];
+      const conds=iv.conditions;
+
+      // descriptive stats
+      const desc=vecs.map((v,i)=>({
+        label:conds[i],n:v.length,
+        mean:+Stat.mean(v).toFixed(3),
+        sd:+Stat.sd(v).toFixed(3),
+        min:+Math.min(...v).toFixed(2),
+        max:+Math.max(...v).toFixed(2),
+      }));
+
+      // normality
+      let normResults=null;
+      if(doNorm) normResults=vecs.map((v,i)=>({label:conds[i],...Stat.shapiroWilk(v)}));
+
+      // main test
+      let testResult=null,testOutput='';
+      if(selTest==='ttest'&&vecs.length>=2){
+        testResult=runTTest(vecs[0],vecs[1],alpha);
+        testOutput=fmtTTest(testResult,conds,alpha,doEffect);
+      }else if(selTest==='anova'){
+        testResult=runANOVA(vecs,alpha);
+        const tukey=doPosthoc?tukeyHSD(vecs,conds,testResult.MSW,testResult.dfW):null;
+        testOutput=fmtANOVA(testResult,conds,alpha,doEffect,tukey);
+      }else if(selTest==='mannwhitney'&&vecs.length>=2){
+        testResult=runMannWhitney(vecs[0],vecs[1],alpha);
+        testOutput=fmtMannWhitney(testResult,conds,alpha,doEffect);
+      }else if(selTest==='kruskalwallis'){
+        testResult=runKruskalWallis(vecs,alpha);
+        testOutput=fmtKruskal(testResult,conds,alpha);
+      }else if(selTest==='chi2'){
+        testResult=runChi2(vecs,conds,alpha);
+        testOutput=fmtChi2(testResult,alpha);
+      }else if(selTest==='pearson'&&vecs.length>=2){
+        testResult=runPearson(vecs[0],vecs[1],alpha);
+        testOutput=fmtPearson(testResult,conds,alpha);
+      }else if(selTest==='regression'&&vecs.length>=2){
+        testResult=runRegression(vecs[0],vecs[1]);
+        testOutput=fmtRegression(testResult,conds);
+      }else{
+        testOutput='선택한 검정에 필요한 조건 수를 확인해주세요.';
+      }
+
+      const rCode=buildRCode(vecs);
+      renderResults({desc,normResults,testOutput,testResult,rCode,vecs,alpha});
+      groqKey?interpretGroq(testOutput,testResult,rCode):showNoGroq();
+    }catch(e){
+      document.getElementById('results').innerHTML=`<div class="alert ae">분석 오류: ${esc(e.message)}</div>`;
+      console.error(e);
+    }finally{btn.disabled=false;lbl.innerHTML='▶ 분석 실행';}
+  },50);
+}
+
+// ── FORMATTERS ──
+function fmtTTest(r,conds,alpha,doEffect){
+  let s=`=== 독립표본 t-검정 ===\n`;
+  s+=`${conds[0]}: M=${r.m1}\n${conds[1]}: M=${r.m2}\n`;
+  s+=`\nt(${r.df}) = ${r.t},  p = ${r.p}`;
+  s+=r.sig?`  ★ 유의 (p < ${alpha})`:`  (p ≥ ${alpha}, 유의하지 않음)`;
+  if(doEffect){
+    const interp=Math.abs(r.d)<0.2?'매우 작음':Math.abs(r.d)<0.5?'소':Math.abs(r.d)<0.8?'중':'대';
+    s+=`\n\nCohen's d = ${r.d}  (효과 크기: ${interp})`;
+  }
+  return s;
+}
+function fmtANOVA(r,conds,alpha,doEffect,tukey){
+  let s=`=== 일원분산분석 (One-way ANOVA) ===\n`;
+  s+=`집단 평균: ${conds.map((c,i)=>`${c}=${r.means[i]}`).join(', ')}\n`;
+  s+=`\nF(${r.dfB}, ${r.dfW}) = ${r.F},  p = ${r.p}`;
+  s+=r.sig?`  ★ 유의 (p < ${alpha})`:`  (p ≥ ${alpha}, 유의하지 않음)`;
+  s+=`\n\n분산분석표:\n  집단간  SS=${r.SSB}  df=${r.dfB}  MS=${r.MSB}\n  집단내  SS=${r.SSW}  df=${r.dfW}  MS=${r.MSW}`;
+  if(doEffect)s+=`\n\nη² = ${r.eta2}  (효과 크기: ${r.eta2<0.01?'소':r.eta2<0.06?'중':'대'})`;
+  if(tukey){
+    s+=`\n\n=== 사후검정 (Tukey HSD) ===`;
+    tukey.forEach(t=>s+=`\n${t.pair}: diff=${t.diff}, q=${t.q}${t.sig?' ★':''}`);
+  }
+  return s;
+}
+function fmtMannWhitney(r,conds,alpha,doEffect){
+  let s=`=== Mann-Whitney U 검정 ===\n`;
+  s+=`${conds[0]} (n=${r.n1}) vs ${conds[1]} (n=${r.n2})\n`;
+  s+=`\nU = ${r.U},  z = ${r.z},  p = ${r.p}`;
+  s+=r.sig?`  ★ 유의 (p < ${alpha})`:`  (p ≥ ${alpha}, 유의하지 않음)`;
+  if(doEffect)s+=`\n\n효과 크기 r = ${r.r}  (${r.r<0.1?'없음':r.r<0.3?'소':r.r<0.5?'중':'대'})`;
+  return s;
+}
+function fmtKruskal(r,conds,alpha){
+  let s=`=== Kruskal-Wallis 검정 ===\n`;
+  s+=`집단: ${conds.join(', ')}\n`;
+  s+=`\nH(${r.df}) = ${r.H},  p = ${r.p}`;
+  s+=r.sig?`  ★ 유의 (p < ${alpha})`:`  (p ≥ ${alpha}, 유의하지 않음)`;
+  return s;
+}
+function fmtChi2(r,alpha){
+  let s=`=== 카이제곱 검정 ===\n`;
+  s+=`\nχ²(${r.df}) = ${r.chi2},  p = ${r.p}`;
+  s+=r.sig?`  ★ 유의 (p < ${alpha})`:`  (p ≥ ${alpha}, 유의하지 않음)`;
+  return s;
+}
+function fmtPearson(r,conds,alpha){
+  let s=`=== 피어슨 상관분석 ===\n`;
+  s+=`${conds[0]} × ${conds[1]}  (n=${r.n})\n`;
+  s+=`\nr = ${r.r},  t(${r.df}) = ${r.t},  p = ${r.p}`;
+  s+=r.sig?`  ★ 유의 (p < ${alpha})`:`  (p ≥ ${alpha}, 유의하지 않음)`;
+  s+=`\n\n효과 크기: ${Math.abs(r.r)<0.1?'없음':Math.abs(r.r)<0.3?'소':Math.abs(r.r)<0.5?'중':'대'}`;
+  return s;
+}
+function fmtRegression(r,conds){
+  let s=`=== 단순 회귀분석 ===\n`;
+  s+=`Y = ${r.b0} + ${r.b1} × X\n`;
+  s+=`R² = ${r.r2}  (설명분산: ${(r.r2*100).toFixed(1)}%)\n`;
+  s+=`\nβ₁: t(${r.df}) = ${r.t},  p = ${r.p}`;
+  s+=r.sig?`  ★ 유의`:`  (유의하지 않음)`;
+  return s;
+}
+
+// ── RENDER RESULTS ──
+function renderResults({desc,normResults,testOutput,testResult,rCode,vecs,alpha}){
+  const iv=ivList[0],dv=dvList[0];
+  const tname=TESTS.find(t=>t.id===selTest)?.name||selTest;
+  const isSig=testResult?.sig;
+
+  const sgHtml=`<div class="sgrid">${desc.map(d=>`
+    <div class="sc">
+      <div class="val">${d.mean}</div>
+      <div class="lbl">${esc(d.label)}</div>
+      <div class="sub">SD ${d.sd} · N ${d.n}</div>
+    </div>`).join('')}</div>`;
+
+  let normHtml='';
+  if(normResults){
+    normHtml=`<div class="rbox" style="margin-bottom:1.2rem">
+      <div class="rhead"><div class="rhtitle">정규성 검정 (Shapiro-Wilk)</div></div>
+      <div class="routput">${normResults.map(r=>`${esc(r.label)}: W = ${r.W},  p = ${r.p}  ${r.p>0.05?'✓ 정규분포 가정 충족':'⚠ 정규분포 가정 위반 의심'}`).join('\n')}</div>
+    </div>`;
+  }
+
+  const sigBadge=isSig!==undefined?`<span class="sig-badge ${isSig?'sig-yes':'sig-no'}">${isSig?'★ 통계적으로 유의함':'유의하지 않음'} (α=${alpha})</span>`:'';
+
+  document.getElementById('results').innerHTML=`
+    <div class="rtitle">분석 결과</div>
+    <div class="rsub">
+      <span>${esc(iv?.name||'IV')}</span>
+      <span style="color:var(--text3)">→</span>
+      <span>${esc(dv?.name||'DV')}</span>
+      <span class="tag">${tname}</span>
+      ${sigBadge}
+    </div>
+    ${sgHtml}
+    ${normHtml}
+    <div class="rbox">
+      <div class="rhead"><div class="rhtitle">검정 결과</div></div>
+      <div class="routput">${esc(testOutput)}</div>
+    </div>
+    <div class="rbox">
+      <div class="rhead">
+        <div class="rhtitle">R 코드 (복사용)</div>
+        <button class="btn btn-g btn-sm" onclick="doCopy()">복사</button>
+      </div>
+      <div class="rcode" id="rce">${esc(rCode)}</div>
+    </div>
+    <div id="isec"></div>`;
+}
+
+// ── GROQ ──
+async function interpretGroq(testOutput,testResult,rCode){
+  const sec=document.getElementById('isec');
+  sec.innerHTML=`<div class="ibox"><h3>🤖 AI 결과 해석 <span style="font-size:11px;font-weight:400;color:var(--text3)">GROQ · ${groqModel}</span></h3><div class="ibody"><p id="itxt" class="cur" style="color:var(--text2)">해석 생성 중...</p></div></div>`;
+  const iv=ivList[0],dv=dvList[0];
+  const rq=document.getElementById('rq').value.trim();
+  const tn=TESTS.find(t=>t.id===selTest)?.name||selTest;
+  const alpha=document.getElementById('alpha').value;
+  const prompt=`당신은 심리학/사회과학 통계 전문가입니다. 아래 분석 결과를 한국어로 해석해주세요.
+
+**실험 정보**
+- 독립변수(IV): ${iv?.name||'미지정'} (조건: ${iv?.conditions?.join(', ')||'없음'})
+- 종속변수(DV): ${dv?.name||'미지정'}
+- 연구 목적: ${rq||'명시 안 됨'}
+- 검정: ${tn} · α=${alpha}
+
+**분석 결과:**
+${testOutput}
+
+다음을 포함해 해석하세요:
+1. **주요 결과**: 검정통계량, p-value, 유의성
+2. **실질적 의미**: 연구 맥락에서의 의미
+3. **효과 크기**: 실질적 중요도
+4. **한계 및 주의사항**
+5. **APA 형식 보고 예시**`;
+  try{
+    const resp=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+      method:'POST',
+      headers:{'Authorization':`Bearer ${groqKey}`,'Content-Type':'application/json'},
+      body:JSON.stringify({model:groqModel,messages:[{role:'user',content:prompt}],max_tokens:1500,stream:true,temperature:0.3})
+    });
+    if(!resp.ok)throw new Error(await resp.text());
+    const reader=resp.body.getReader(),dec=new TextDecoder();
+    let full='';
+    const el=document.getElementById('itxt');el.className='';
+    while(true){
+      const{done,value}=await reader.read();if(done)break;
+      for(const line of dec.decode(value).split('\n')){
+        if(line.startsWith('data: ')&&line!=='data: [DONE]'){
+          try{const delta=JSON.parse(line.slice(6)).choices?.[0]?.delta?.content||'';full+=delta;el.innerHTML=fmt(full)+'<span class="cur"></span>';}catch{}
+        }
+      }
+    }
+    el.innerHTML=fmt(full);
+  }catch(e){
+    const el=document.getElementById('itxt');
+    if(el)el.innerHTML=`<span style="color:var(--red)">GROQ 오류: ${esc(e.message)}</span>`;
+  }
+}
+function showNoGroq(){
+  const s=document.getElementById('isec');if(!s)return;
+  s.innerHTML=`<div class="alert aw">AI 해석을 사용하려면 오른쪽 상단 <strong>⚙ 설정</strong>에서 GROQ API 키를 입력하세요. <a href="https://console.groq.com/keys" target="_blank" style="color:var(--amber);margin-left:4px">무료 발급 →</a></div>`;
+}
+
+// ── UTILS ──
+function fmt(t){return t.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>').replace(/^/,'<p>').replace(/$/,'</p>');}
+function rn(s){return(s||'v').replace(/[^a-zA-Z0-9가-힣_]/g,'_').replace(/^[0-9]/,'v_')||'v';}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function doCopy(){const el=document.getElementById('rce');if(el)navigator.clipboard.writeText(el.textContent).then(()=>{const b=el.closest('.rbox').querySelector('.btn-g');if(b){b.textContent='✓ 복사됨';setTimeout(()=>b.textContent='복사',1500);}});}
+
+renderDV();renderIV();
+</script>
+</body>
+</html>
